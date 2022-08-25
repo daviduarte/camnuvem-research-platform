@@ -1,4 +1,4 @@
-./anomalyDetection/RTFM/ckpt
-./anomalyDetection/WSAL/weights
-./anomalyDetection/files
-./extractI3d/pytorch-resnet3d/pretrained
+anomalyDetection/RTFM/ckpt/
+anomalyDetection/WSAL/weights/
+anomalyDetection/files/
+extractI3d/pytorch-resnet3d/pretrained/
