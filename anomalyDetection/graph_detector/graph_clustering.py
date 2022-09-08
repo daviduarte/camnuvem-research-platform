@@ -73,6 +73,8 @@ def make_obj_graph(object_path, bbox_fea_list, box_list):
     x = []
     for i in range(len(object_path)-1):
         index = int(object_path[i])
+        if index == -1:
+            break
         x.append(bbox_fea_list[i][0][index])
     
     index = int(object_path[i])
@@ -82,6 +84,17 @@ def make_obj_graph(object_path, bbox_fea_list, box_list):
     print(clustering.labels_)
 
     return clustering    
+
+def calculeObjectPath(graph, frame, obj_index):
+
+    object_path = []
+
+    print("calculando o path do objeto "+str(obj_index))
+    for f in graph[frame:]:     # For each frame
+        obj = f[obj_index]
+        object_path.append(obj)
+        
+    return object_path
 
 temporal_graph = temporalGraph.TemporalGraph(DEVICE, OBJECTS_ALLOWED, N_DOWNSTRAM)
 
@@ -95,6 +108,12 @@ reference_frame = 0
 for i in range(1):
     sample = next(train_loader)
     sample = next(train_loader)
+    sample = next(train_loader)
+    sample = next(train_loader)
+    sample = next(train_loader)
+    sample = next(train_loader)
+    sample = next(train_loader)  
+    sample = next(train_loader)
     
     print(sample.shape)
     sample = torch.squeeze(sample)
@@ -103,23 +122,47 @@ for i in range(1):
 
     #print(input_normal.shape)    
 
-    adj_mat, bbox_fea_list, box_list = temporal_graph.frames2temporalGraph(sample)    
+    adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(sample)    
 
     print(adj_mat[0].shape)
 
-    SIMILARITY_THRESHOLD = 0.87
+    # graph is [N,T] matrix, contening the path of every object through frames
+    SIMILARITY_THRESHOLD = 0.65#0.73
+    graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, C, N_DOWNSTRAM)
+    print("Len do graph: ")
+    print(len(graph))
+
+    object_list = []
     # For each object
-    for obj in range(N_DOWNSTRAM):
-        obj = 1
-        data, object_path = utils.calculeTarget(adj_mat, bbox_fea_list, box_list, reference_frame, obj, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, C, N_DOWNSTRAM)        
+    cont = 0
+    last_index = 0
+    for f in range(len(score_list)-1):  # Total frame qtt 
 
-        print("Object path")
-        print(object_path)
+        print(len(graph[f]))
+        print(len(object_list))
+        if len(graph[f]) > len(object_list):
+            object_list = graph[f]
+        else:
+            #object_list = []
+            continue
 
-        clustering = make_obj_graph(object_path, bbox_fea_list, box_list)
+        print("Qtd elementos no graph")
+        print(object_list)
 
-        utils.print_image(sample, box_list, object_path, obj)
+        for index_obj in range(len(object_list[last_index:])):     # Each frame can has different number of objects
 
-        exit()
+            # Given the path graph of every object of every frame, make a single path graph of 
+            # the 'obj' object starting at 'reference frame'
+            
+            object_path = calculeObjectPath(graph, f, index_obj+last_index)
+
+            #clustering = make_obj_graph(object_path, bbox_fea_list, box_list)
+
+            utils.print_image(sample[f:], box_list[f:], object_path, cont)
+
+            cont += 1
+
+        last_index += index_obj+1
+
 
 

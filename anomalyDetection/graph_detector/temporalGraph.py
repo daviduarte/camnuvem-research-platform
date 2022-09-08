@@ -244,6 +244,12 @@ class TemporalGraph:
 			x_center = box[0] + dx/2
 			y_center = box[1] + dy/2
 
+			#print(x_center)
+			#print(y_center)
+			#print(dx)
+			#print(dy)
+			#print("\n\n")
+
 			frame2_boxes.append([x_center, y_center, dx, dy])
 
 		frame1_boxes = torch.from_numpy(np.asarray(frame1_boxes))
@@ -252,10 +258,34 @@ class TemporalGraph:
 		vec1_ = torch.repeat_interleave(frame1_boxes, frame2_boxes.shape[0], dim=0)
 		vec2_ = frame2_boxes.repeat(frame1_boxes.shape[0], 1)
 
+
 		spacial_sim = cos(vec1_, vec2_)
+		#spacial_sim = torch.dist(vec1_, vec2_, p=2)
+		#spacial_sim = torch.cdist(vec1_, vec2_, p=2.0)
 		spacial_sim = spacial_sim.view(bbox_fea_vec1.shape[0], bbox_fea_vec2.shape[0])
 
-		output = (0.6*spacial_sim + 0.4*appea_dist)	#/2
+		"""
+		print(spacial_sim.shape)
+		print("Primeiro valor do vec_1")
+		print(vec1_[0])
+		print("Primeiro valor do vec_2")
+		print(vec2_[3])		
+		print("Cos entre vec1 e vec2")
+		print(spacial_sim[0][3])
+		print("Similaridade entre")
+		print(appea_dist[0][3])
+
+		print("Score entre o 0 e 0")
+		print(0.4*spacial_sim[0][0] + 0.6*appea_dist[0][0])
+		print("Score entre o 0 e 0 3")
+		print(0.4*spacial_sim[0][3] + 0.6*appea_dist[0][3])
+
+		exit()	
+		"""
+
+		# The spacial_sim presents a very low alteration between two different points, so we have to use
+		# a exponential function to valorize this small difference
+		output = (0.4 * (50**(spacial_sim)-49) + 0.6*appea_dist)	#/2
 
 		return output
 
@@ -267,6 +297,7 @@ class TemporalGraph:
 		num_img = images.shape[0]
 		bbox_fea_list = []
 		box_list = []
+		score_list = []
 
 		for i in range(num_img-1):
 			img1, img2 = images[i], images[i+1]
@@ -282,6 +313,7 @@ class TemporalGraph:
 
 			bbox_fea_list.append([bbox_fea_vec1, bbox_fea_vec2])
 			box_list.append([boxes1, boxes2])
+			score_list.append([scores1, scores2])
 			adjacency_matrix = self.make_temporal_graph(data1, data2)
 
 			if len(bbox_fea_vec2) == 0 : 
@@ -294,4 +326,4 @@ class TemporalGraph:
 
 
 		#ma = np.stack(ma, axis=0)
-		return ma, bbox_fea_list, box_list
+		return ma, bbox_fea_list, box_list, score_list

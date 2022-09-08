@@ -131,7 +131,7 @@ def train(save_folder):
     for step in tqdm(
             range(1, MAX_EPOCH + 1),
             total=MAX_EPOCH,
-            dynamic_ncols=True
+            dynamic_ncols=TrueImplementar
     ):    
 
         with torch.set_grad_enabled(True):
@@ -147,7 +147,7 @@ def train(save_folder):
             # Returns [T-1, obj1, obj2], beeing obj1 the num object detected in the first frame and obj2 in the second frame
             # [] if a frame does not have objects
 
-            adj_mat, bbox_fea_list, box_list = temporal_graph.frames2temporalGraph(input)
+            adj_mat, bbox_fea_list, box_list, _ = temporal_graph.frames2temporalGraph(input)
 
 
             # If in the first frame there is no object detected, so we have nothing to do here
@@ -279,7 +279,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
                             lr=LR_DOWNSTREAM, weight_decay=0.005)
 
 
-    auc = test_downstream(test_dataset, prunned_model_pt, model, viz, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N_DOWNSTRAM)
+    auc = test_downstream(test_dataset, prunned_model_pt, model, viz, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, T, N_DOWNSTRAM)
     test_log.write(str(auc) + " ")
     test_log.flush()
     best_auc = auc
@@ -371,7 +371,7 @@ def runDownstream():
     N = int(config['PARAMS']['N'])                                      # How many objects we will consider for each frame?
     STRIDE = int(config['PARAMS']['STRIDE'])                            # STRIDE for each sample
     MAX_EPOCH = int(config['PARAMS']['MAX_EPOCH'])                      # Training max epoch
-    LR = float(config['PARAMS']['LR'])                                    # Learning rate
+    LR = float(config['PARAMS']['LR'])                                  # Learning rate
     OBJECT_FEATURE_SIZE = int(config['PARAMS']['OBJECT_FEATURE_SIZE'])  # OBJECT_FEATURE_SIZE
     SIMILARITY_THRESHOLD = float(config['PARAMS']['SIMILARITY_THRESHOLD'])
 

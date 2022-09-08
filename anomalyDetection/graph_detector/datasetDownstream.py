@@ -149,7 +149,7 @@ class DatasetDownstream(data.Dataset):
         count = 0
 
         folder_index = 0
-        for i, item in enumerate(self.frame_folders['sample_num']):   # for each sample num 'item' from each video 'i'
+        for i, item in enumerate(self.frame_folders['sample_num']):   # for each sample 'item' from each video 'i'
             count += item            
             if index <= count:             # The searched sample is in 'i' video
             
@@ -202,7 +202,7 @@ class DatasetDownstream(data.Dataset):
         else:
             index = 1 
             sample, folder_index = self.getImage(index)
-            
+
             # Create some trick to inference the first frames. 
             # In the first frames, when we don't have a windows of self.T frame to predict the anomality of a frame,
             # we have to create a windows composed of black images, used to predict the last frame.
@@ -215,11 +215,6 @@ class DatasetDownstream(data.Dataset):
             sample = sample_new
         
         sample = sample.astype('float32')
-        print("Shape dos "+str(self.T) + " frames lidos")
-        print(sample.shape)     
-
-        print("Shape do input: ")       
-        print(sample.dtype)
 
 
         if self.test:

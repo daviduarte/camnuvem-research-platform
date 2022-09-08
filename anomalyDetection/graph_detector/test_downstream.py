@@ -6,6 +6,9 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import utils
 import temporalGraph
+import os
+import cv2
+import math
 
 def getFrameQtd(frame_folder_path):
     video_path = frame_folder_path.replace('CamNuvem_dataset_normalizado_frames_05s', 'CamNuvem_dataset_normalizado/videos/samples')
@@ -15,8 +18,153 @@ def getFrameQtd(frame_folder_path):
     length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 
-def test(dataloader, model_pt, model_ds, viz, device, ten_crop, gt_path, OBJECTS_ALLOWED, N_DOWNSTRAM, only_abnormal = False):
+def getLabels(labels):
 
+    # Colocar isso no config.ini depois
+    # TODO
+    test_normal_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/test/normal"
+    test_anomaly_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/test/anomaly"
+
+    with open(labels) as file:
+        lines = file.readlines()
+
+
+    gt = []
+    qtd_total_frame = 0
+    for line in lines:        
+
+        line = line.strip()
+        list = line.split("  ")
+
+        video_name = list[0]
+        video_path = os.path.join(test_anomaly_folder, video_name)
+        
+        # First we create an array with 'frame_qtd' zeros
+        # Zeros represents the 
+        cap = cv2.VideoCapture(video_path)
+        frame_qtd = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        qtd_total_frame += frame_qtd
+
+        frame_label = np.zeros(frame_qtd)
+
+
+        labels = list[1]
+        labels = labels.split(' ')
+
+        assert(len(labels) % 2 == 0) # We don't want incorrect labels
+        sample_qtd = int(len(labels)/2)
+        
+        
+        for i in range(sample_qtd):
+            index = i*2
+            start = round(float(labels[index]) * frame_qtd)
+            end = round(float(labels[index+1]) * frame_qtd)
+            
+            frame_label[start:end] = 1
+
+        gt.append([video_name, frame_label])
+
+    print("Qtd total de frame: ")
+    print(qtd_total_frame)
+    return gt
+
+
+
+
+
+def test(dataloader, model_pt, model_ds, viz, device, ten_crop, gt_path, OBJECTS_ALLOWED, N_DOWNSTRAM, T, only_abnormal = False):
+
+    dataloader = iter(dataloader)
+
+    # Receber isso por parâmetro
+    NUM_SAMPLE_FRAME = 15
+    LABELS_PATH = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/labels/test.txt"
+    labels = getLabels(LABELS_PATH) # 2d matrix containing the frame-level frame (columns) for each video (lines)
+
+
+    gt = []
+    scores = []
+    temporal_graph = temporalGraph.TemporalGraph(device, OBJECTS_ALLOWED, N_DOWNSTRAM)    
+    with torch.no_grad():
+        model_pt.eval()
+        model_ds.eval()    
+
+        acc = 0
+        for video_index, video in enumerate(labels):    # For each video
+            qtdFrame = len(video[1])
+            window = 0
+            for i, j in enumerate(video[1]):     # For each label in this video
+                print("Frame atual:  "+str(acc))
+                acc += 1
+
+                # One inference represents T frames
+                if window != 0:
+
+                    print(T*NUM_SAMPLE_FRAME-1)
+                    print(qtdFrame - T*NUM_SAMPLE_FRAME-1)
+                    print(i)
+                    if (i > T*NUM_SAMPLE_FRAME-1 and i < (qtdFrame - T*NUM_SAMPLE_FRAME-1)):
+                        gt.append(j)
+                        scores.append(score)     
+
+                    if window == NUM_SAMPLE_FRAME-1 or i == qtdFrame:
+                        window = 0
+                    else:
+                        window += 1
+
+                    continue
+
+                input= next(dataloader)
+                window += 1
+
+                if i < T*NUM_SAMPLE_FRAME-1 or i > (qtdFrame - T*NUM_SAMPLE_FRAME-1):
+                    print("skipando")
+                    continue                
+
+                # There may exists more .png files than seconds, for some FFMPEG weird reason. 
+                while input[3].cpu().flatten() != video_index:
+                    print("Há mais png do que frames")
+                    print("input: ")
+                    print(input[3])
+                    print("video index")
+                    print(video_index)
+                    input = next(dataloader)
+
+                gt.append(j)
+
+                #print(input.shape)
+
+                # Obtain the bounding box from images
+                input, box_list_normal = utils.img2bbox(input, temporal_graph, N_DOWNSTRAM)
+
+                # If the ins't any object on scene, we consider as NORMAL
+                if input is -1:
+                    score = 0.0
+                else:
+                    input = input.view(1, -1).to(device)
+                    box_list_normal = box_list_normal.view(1, -1).to(device)
+
+                    input = torch.cat((input, box_list_normal), dim=1)
+
+                    score = model_ds(model_pt(input))
+         
+                    score = score.data.cpu().numpy().flatten()[0]     
+                
+                scores.append(score)     
+                
+            window = 0      
+
+
+    print("Dimensões do gt: ")
+    print(len(gt))
+    print("Dimensões do scores: ")
+    print(len(scores))
+
+    exit()
+
+
+
+    getFrameQtd()
 
     #print(gt_path)
     #with open(gt_path,'r') as file:
