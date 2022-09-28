@@ -11,12 +11,18 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 class DatasetDownstream(data.Dataset):
     #def __init__(self, args, is_normal=True, transform=None, test_mode=False, only_anomaly=False):
-    def __init__(self, T, list_=None, normal = True, test = False):
+    def __init__(self, T, max_sample_duration, list_=None, normal = True, test = False):
 
         self.normal = normal
-        self.max_sample = 32        # If the video is too big, we limitate due computational limitations
-        self.T = T                  # Frame qtt in any sample
-        self.stride = 1 #self.T    # stride of the sliding window
+        self.max_sample = 32                            # If the video is too big, we limitate due computational limitations
+        self.T = T                                      # Frame qtt in any sample
+        self.max_sample_duration = max_sample_duration  # In .png qtt. 250png files, sampled at 0.5 sec each, results in 125 seconds (~2min)        
+
+        if test == False:
+            self.stride = self.T   # Each sample has unique images
+        else:
+            self.stride = 1 #self.T    # We need a label for each frame
+
         self.frame_folders = {}
         self.sample_qtd = 0
         self.abnormal_sample_qtd = 0
@@ -27,9 +33,9 @@ class DatasetDownstream(data.Dataset):
 
         if self.test == False:
             if self.normal == True:
-                self.folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/downstream_task_teste/0.5s/training/normal"
+                self.folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/training/normal"
             else:
-                self.folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/downstream_task_teste/0.5s/training/anomaly"
+                self.folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/training/anomaly"
         else:            
             assert(list_ != None)
             # If we are in test, we do not need the self.folder, we have a .txt containing all files we need in order
@@ -67,15 +73,9 @@ class DatasetDownstream(data.Dataset):
         video_path = video_path.rsplit('/', 1)
         video_path = os.path.join(video_path[0], video_path[1]+'.mp4')
 
-        print("Path do video")
-        print(video_path)
 
         cap = cv2.VideoCapture(video_path)
         length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-
-        print("Qtd de frames obtido do video")
-        print( length )
 
         return length
 
@@ -99,6 +99,8 @@ class DatasetDownstream(data.Dataset):
             if os.path.isdir(frame_folder_path):
                 self.frame_folders['list'].append(frame_folder_path)
                 num = self.calcule_sample_num(frame_folder_path)
+                if num > self.max_sample_duration:
+                    num = self.max_sample_duration
                 self.frame_folders['sample_num'].append(num)
 
                 totalSample += num
@@ -118,7 +120,10 @@ class DatasetDownstream(data.Dataset):
 
             if os.path.isdir(frame_folder_path):
                 self.frame_folders['list'].append(frame_folder_path)
-                num = self.calcule_sample_num_test(frame_folder_path)
+                num = self.calcule_sample_num(frame_folder_path)
+                if num > self.max_sample_duration:
+                    num = self.max_sample_duration
+                    
                 self.frame_folders['sample_num'].append(num)
                 qtd_total_frame = self.calcule_totl_qtd_frame(frame_folder_path)
                 self.frame_folders['qtd_total_frame'].append(qtd_total_frame)   
@@ -149,6 +154,7 @@ class DatasetDownstream(data.Dataset):
         count = 0
 
         folder_index = 0
+
         for i, item in enumerate(self.frame_folders['sample_num']):   # for each sample 'item' from each video 'i'
             count += item            
             if index <= count:             # The searched sample is in 'i' video
@@ -164,7 +170,7 @@ class DatasetDownstream(data.Dataset):
             print("Error")
             exit()
 
-        # 'sample' is the sample index we are searching
+        # 'sample' is the sample index we are searching for
         sample = []
         for i in range(self.T):
             # Read the 'self.T' frames that compose the sample
@@ -188,17 +194,18 @@ class DatasetDownstream(data.Dataset):
         label = self.get_label()
 
         # In test we need samples IN ORDER
-        if self.test == False:
+        #if self.test == False:
             # TODO: shufle param in the DataLoader is broken? This is a workaroud to get a random sample
-            index = random.randint(0,self.sample_qtd-1)
+        #    index = random.randint(0,self.sample_qtd-1)
 
 
         index = index+1         # Png frame files start at 1
 
-        if index > self.T:
-            index = index - self.T + 1
+        #if index > self.T:
+        #index = index - self.T + 1
 
-            sample, folder_index = self.getImage(index)
+        sample, folder_index = self.getImage(index)
+        """
         else:
             index = 1 
             sample, folder_index = self.getImage(index)
@@ -213,6 +220,7 @@ class DatasetDownstream(data.Dataset):
             sample_new[-1] = sample[index-1]    # Put image 'index' in the last position of sample_new.
                 
             sample = sample_new
+        """
         
         sample = sample.astype('float32')
 

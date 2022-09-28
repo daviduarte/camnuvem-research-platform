@@ -18,7 +18,10 @@ def getFrameQtd(frame_folder_path):
     length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 
-def getLabels(labels):
+#param labels A txt file path containing all test/anomaly frame level labels
+#param list A txt file path containing all absolut path of every test file (normal and anomaly)
+def getLabels(labels, list):
+
 
     # Colocar isso no config.ini depois
     # TODO
@@ -27,6 +30,7 @@ def getLabels(labels):
 
     with open(labels) as file:
         lines = file.readlines()
+    qtd_anomaly_files = len(lines)
 
 
     gt = []
@@ -47,7 +51,6 @@ def getLabels(labels):
 
         frame_label = np.zeros(frame_qtd)
 
-
         labels = list[1]
         labels = labels.split(' ')
 
@@ -64,6 +67,34 @@ def getLabels(labels):
 
         gt.append([video_name, frame_label])
 
+
+    #############################################################
+
+    list = []
+    for filename in os.listdir(test_anomaly_folder):
+        f = os.path.join(test_anomaly_folder, filename)
+        # checking if it is a file
+        if os.path.isfile(f):
+            list.append(f)
+
+    # Lets get the normal videos
+    qtd_total_frame = 0
+    for video_path in list:
+        video_path = video_path.strip()
+
+        # First we create an array with 'frame_qtd' zeros
+        # Zeros represents the 
+        print(video_path)
+        cap = cv2.VideoCapture(video_path)
+        frame_qtd = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        qtd_total_frame += frame_qtd
+
+        frame_label = np.zeros(frame_qtd)   # All frames here are normal.
+        
+        gt.append([video_path, frame_label])
+
+
+
     print("Qtd total de frame: ")
     print(qtd_total_frame)
     return gt
@@ -72,85 +103,106 @@ def getLabels(labels):
 
 
 
-def test(dataloader, model_pt, model_ds, viz, device, ten_crop, gt_path, OBJECTS_ALLOWED, N_DOWNSTRAM, T, only_abnormal = False):
+def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device, ten_crop, gt_path, OBJECTS_ALLOWED, N, T, EXIT_TOKEN, only_abnormal = False):
 
     dataloader = iter(dataloader)
 
     # Receber isso por parâmetro
     NUM_SAMPLE_FRAME = 15
     LABELS_PATH = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/labels/test.txt"
-    labels = getLabels(LABELS_PATH) # 2d matrix containing the frame-level frame (columns) for each video (lines)
-
+    labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
 
     gt = []
     scores = []
-    temporal_graph = temporalGraph.TemporalGraph(device, OBJECTS_ALLOWED, N_DOWNSTRAM)    
+    temporal_graph = temporalGraph.TemporalGraph(device, OBJECTS_ALLOWED, N)    
     with torch.no_grad():
         model_pt.eval()
         model_ds.eval()    
 
         acc = 0
         for video_index, video in enumerate(labels):    # For each video
+
+            # Adjust the labels to the truncated frame due computation capability militation
+            truncated_frame_qtd = int(max_sample_duration * NUM_SAMPLE_FRAME)    # The video has max this num of frame
+            if len(video[1]) > truncated_frame_qtd:
+                video[1] = video[1][0:truncated_frame_qtd]                  # If needed, truncate it
+
             qtdFrame = len(video[1])
             window = 0
+            png_conter = 0
+
+            # Initially lets discart the first NUM_SAMPLE * T Frames, it is the first sample
+            input= next(dataloader)
+
             for i, j in enumerate(video[1]):     # For each label in this video
-                print("Frame atual:  "+str(acc))
-                acc += 1
+                acc+= 1
 
-                # One inference represents T frames
-                if window != 0:
-
-                    print(T*NUM_SAMPLE_FRAME-1)
-                    print(qtdFrame - T*NUM_SAMPLE_FRAME-1)
-                    print(i)
-                    if (i > T*NUM_SAMPLE_FRAME-1 and i < (qtdFrame - T*NUM_SAMPLE_FRAME-1)):
-                        gt.append(j)
-                        scores.append(score)     
-
-                    if window == NUM_SAMPLE_FRAME-1 or i == qtdFrame:
-                        window = 0
-                    else:
-                        window += 1
-
+                # The first NUM_SAMPLE_FRAME * T frames will be discarted, because the incomplete window
+                if i < (NUM_SAMPLE_FRAME * T):
                     continue
 
+                if window == NUM_SAMPLE_FRAME or i == qtdFrame:
+                    window = 0
+
+                if window != 0:
+                    scores.append(score)  
+                    gt.append(j)                       
+                    window += 1
+                    continue
+
+                print("Frame " + str(acc))
+                #print("Pegando o " + str(png_conter) + " png")
+                #print("Estamos no " + str(i) + " frame")
                 input= next(dataloader)
-                window += 1
+                input = np.squeeze(input)
+                png_conter += 1
 
-                if i < T*NUM_SAMPLE_FRAME-1 or i > (qtdFrame - T*NUM_SAMPLE_FRAME-1):
-                    print("skipando")
-                    continue                
-
-                # There may exists more .png files than seconds, for some FFMPEG weird reason. 
+                # We cannot accept to exist more .png than frames. If is the case, some MERDA occuried
                 while input[3].cpu().flatten() != video_index:
                     print("Há mais png do que frames")
                     print("input: ")
                     print(input[3])
                     print("video index")
                     print(video_index)
-                    input = next(dataloader)
+                    #input = next(dataloader)
+                    print("DEU MERDA. NÃO ERA PRA EXISTIR MAIS PNG DO QUE LABELS")
+                    print("Qtd no gt: ")
+                    print(len(gt))
+                    print("qtd no scores: ")
+                    print(len(scores))
+                    exit()
 
-                gt.append(j)
+                frames = torch.squeeze(input[0])
+                adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(frames)
 
-                #print(input.shape)
+                SIMILARITY_THRESHOLD = 0.65#0.73
+                reference_frame = 0
+                obj_predicted = 0
+                graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, temporal_graph, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
-                # Obtain the bounding box from images
-                input, box_list_normal = utils.img2bbox(input, temporal_graph, N_DOWNSTRAM)
 
-                # If the ins't any object on scene, we consider as NORMAL
-                if input is -1:
+                data, object_path = utils.calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+
+                if data == -1:
+                    # TODO: WE DO NOT CAN CONSIDER AS NORMAL JUST BECAUSE THERE IS NO OBJECTS IN THE FIRST FRAME.
+                    # IF WE HAVE A BIGGER WINDOW, WE NEED CONSIDER THE OTHER FRAMES
                     score = 0.0
+
                 else:
-                    input = input.view(1, -1).to(device)
-                    box_list_normal = box_list_normal.view(1, -1).to(device)
 
-                    input = torch.cat((input, box_list_normal), dim=1)
+                    input, target = data 
 
-                    score = model_ds(model_pt(input))
-         
-                    score = score.data.cpu().numpy().flatten()[0]     
-                
-                scores.append(score)     
+                    # If the ins't any object on scene, we consider as NORMAL
+                    if input is -1:
+                        score = 0.0
+                    else:
+                        score = model_ds(model_pt(input))
+             
+                        score = score.data.cpu().numpy().flatten()[0]     
+                    
+                scores.append(score)  
+                gt.append(j)   
+                window += 1
                 
             window = 0      
 
@@ -160,142 +212,35 @@ def test(dataloader, model_pt, model_ds, viz, device, ten_crop, gt_path, OBJECTS
     print("Dimensões do scores: ")
     print(len(scores))
 
-    exit()
+    
+    #gt = list(gt)
 
+    fpr, tpr, threshold = roc_curve(gt, scores)
 
+    if only_abnormal:            
+        np.save('fpr_graph_only_abnormal.npy', fpr)
+        np.save('tpr_graph_only_abnormal.npy', tpr)
+    else:
+        np.save('fpr_graph.npy', fpr)
+        np.save('tpr_graph.npy', tpr)
 
-    getFrameQtd()
+    rec_auc = auc(fpr, tpr)
 
-    #print(gt_path)
-    #with open(gt_path,'r') as file:
-    #    lines = file.readlines()
-    #    print(lines)
-    #exit()
+    print('auc : ' + str(rec_auc))
 
+    best_threshold = threshold[np.argmax(tpr - fpr)]
+    print("Best threshold: ")
+    print(best_threshold)
 
-
-    temporal_graph = temporalGraph.TemporalGraph(device, OBJECTS_ALLOWED, N_DOWNSTRAM)    
-    with torch.no_grad():
-        model_pt.eval()
-        model_ds.eval()
-        pred_ = []
-
-        gpu_id = 0
-        cont = 0
-        vai = True
-        
-        frames_restantes = 0
-        id = -1
-        for i, input in enumerate(dataloader):
-
-            print("Iteração: " + str(i))
-            print("\n")
-
-            print("nooiz")
-            print(input[2])
-
-            qtd_total_frame = input[2].cpu()
-            id = input[3]
-            if vai:
-                frames_restantes = qtd_total_frame
-                vai = False
-
-            # If the previous sample ID is equal of actual id (input[3])
-            # and if there is more .png files than frames in video (beause some strange in ffmpeg)
-            # Than we know that we can ignore this sample
-            if id == input[3] and frames_restantes <= 0:
-                vai = True
-                continue
-
-            # Obtain the bounding box from images
-            input, box_list_normal = utils.img2bbox(input, temporal_graph, N_DOWNSTRAM)
-
-            # If the ins't any object on scene, we consider as NORMAL
-            if input is -1:
-                score = 0.0
-            else:
-                input = input.view(1, -1).to(device)
-                box_list_normal = box_list_normal.view(1, -1).to(device)
-
-                input = torch.cat((input, box_list_normal), dim=1)
-
-                score = model_ds(model_pt(input))
-     
-                score = score.data.cpu().numpy().flatten()[0]
-
-            if frames_restantes < 15 and frames_restantes > 0:
-                qtd_to_repeat = frames_restantes
-            else:
-                qtd_to_repeat = 15
-
-            print("oi :) 00000000000")
-            print(type(score))
-            print(score)
-            print(type(qtd_to_repeat))
-            print(qtd_to_repeat)
-            score = np.repeat(score, qtd_to_repeat)
-            pred_.extend(score)
-            cont += 1
-            frames_restantes -= 15
-
-
-
-
-        print("Qtd todal de exemplos de testr: ")
-        print(cont)
-        #exit()
-
-        #if args.dataset == 'shanghai':
-        gt = np.load(gt_path)
-        #elif args.dataset == 'camnuvem':
-        print("Carregando o gt da camnuvem")
-        #    gt = np.load('list/gt-camnuvem.npy')
-        #else:
-        #    gt = np.load('list/gt-ucf.npy')
-
-        print("Quantidade total de frames: ")
-        print(len(pred_))        
-
-        print("Quantidde total de frames no arquivo gt: ")
-        print(gt.shape)
-
-
-        #pred = list(pred_.cpu().detach().numpy())
-        #pred = np.repeat(np.array(pred), args['segment_size'])
-
-
-        print("td do pred: ")
-
-
-        
-        gt = list(gt)
-
-        fpr, tpr, threshold = roc_curve(gt, pred_)
-
-        if only_abnormal:            
-            np.save('fpr_graph_only_abnormal.npy', fpr)
-            np.save('tpr_graph_only_abnormal.npy', tpr)
-        else:
-            np.save('fpr_graph.npy', fpr)
-            np.save('tpr_graph.npy', tpr)
-
-        rec_auc = auc(fpr, tpr)
-
-        print('auc : ' + str(rec_auc))
-
-        best_threshold = threshold[np.argmax(tpr - fpr)]
-        print("Best threshold: ")
-        print(best_threshold)
-
-        precision, recall, th = precision_recall_curve(list(gt), pred_)
-        pr_auc = auc(recall, precision)
-        np.save('precision.npy', precision)
-        np.save('recall.npy', recall)
-        viz.plot_lines('pr_auc', pr_auc)
-        viz.plot_lines('auc', rec_auc)
-        viz.lines('scores', pred_)
-        viz.lines('roc', tpr, fpr)
-        return rec_auc
+    precision, recall, th = precision_recall_curve(list(gt), scores)
+    pr_auc = auc(recall, precision)
+    np.save('precision.npy', precision)
+    np.save('recall.npy', recall)
+    viz.plot_lines('pr_auc', pr_auc)
+    viz.plot_lines('auc', rec_auc)
+    viz.lines('scores', scores)
+    viz.lines('roc', tpr, fpr)
+    return rec_auc
 
 
 

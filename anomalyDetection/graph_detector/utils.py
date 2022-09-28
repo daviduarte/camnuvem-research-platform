@@ -65,7 +65,7 @@ def targetFind(object_predicted, adjacency_matrix, frame, SIMILARITY_THRESHOLD, 
     return next_object, object_path
 
 # Given a 'obj_predicted' in the 'reference_frame', calcule it's path though the frame window
-def calculeTarget(adj_mat, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
+def calculeTarget_deprecated(adj_mat, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
 
     target_index, object_path = targetFind(obj_predicted, adj_mat, reference_frame, SIMILARITY_THRESHOLD, T)
 
@@ -102,22 +102,109 @@ def calculeTarget(adj_mat, bbox_fea_list, box_list, reference_frame, obj_predict
 
     return [input, target], object_path    
 
+def calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
+
+    # First we have to calculate the path of first object, that will be our label.
+    object_path = []
+
+    # First frame without objects
+    if len(graph[0]) == 0:
+        return -1, -1
+
+    object_path = [graph[i][0] for i in range(reference_frame, T)]
+
+    if len(object_path) < T-1:
+        print("Nã era para o object_path ser menor que T")
+        exit()
+
+    if object_path[-1] == -1:
+        target = torch.zeros(EXIT_TOKEN)
+    else:
+        target_index = object_path[-1]    
+
+        object_in_the_last_frame = bbox_fea_list[-1][1][target_index]        # Last element, objects from last image, object num. 'obj_predicted'
+        object_in_the_last_frame_box = box_list[-1][1][target_index]         # a 4 element list
+
+        # The output is the x1, y1, x2, y2 object coordinates concat with object feature
+        target = np.append(object_in_the_last_frame_box, object_in_the_last_frame).astype('float32')
+        target = torch.from_numpy(target).to(DEVICE)                
+
+
+    # Now we have to calculate the input. The input will be N objects in each frame. 
+    input_boxes = []
+    input_features = []
+
+    box_shape = len(box_list[0][0][0])
+    fea_shape = len(bbox_fea_list[0][0][0])
+
+    num_obj = len(bbox_fea_list[0][0])
+    for i in range(reference_frame, T-1):
+
+        # Initially a list of all objects in graph, includes several -1
+        top_n = graph[i]
+
+        # Remove all -1
+        list2 = []
+        for j in top_n:
+            if j != -1:
+                list2.append(j)
+        top_n = list2
+
+        top_n = top_n[0:N]
+
+        for obj_index in top_n:
+            input_boxes.append(box_list[i][0][obj_index])
+            input_features.append(bbox_fea_list[i][0][obj_index])
+
+    
+        # ADD a token to explain to the NN that does not have more objects.
+        cont = len(top_n)
+        NO_ENTRY_TOKEN_boxes = [1.0 for i in range(box_shape)]
+        NO_ENTRY_TOKEN_features = [1.0 for i in range(fea_shape)]
+
+        while(cont < N):
+            input_boxes.append(NO_ENTRY_TOKEN_boxes)
+            input_features.append(NO_ENTRY_TOKEN_features)
+            cont += 1
+    
+    input_boxes = np.stack(input_boxes, axis=0).astype('float32')
+    input_features = np.stack(input_features, axis=0).astype('float32')
+
+    input = np.append(input_boxes, input_features).astype('float32')
+    """
+     The input is the (x1, y1, x2, y2) * N-1 object coordinates concat with (object feature) * N-1
+    """
+    input = torch.from_numpy(input).to(DEVICE)                  
+
+    # Return the input, the target and the object_path of reference object
+    return [input, target], object_path
+
 # Verify if there is N objects with high accuracy. Avoid to add spurius objects. 
 # If a new object is in 'objects_already_tracked', does not include it as a new object
-def add_objects(frame, N, score_list, objects_already_tracked):
+def add_objects(frame, T, N, score_list, objects_already_tracked):
     SCORE_THRESHOLD_NEW_OBJECT = 0.7
 
     list_ = []
-    detected_objects_num = len(score_list[frame][0])
-    n_ = N
-    if detected_objects_num < N:
-        n_ = detected_objects_num
 
-    for i in range(n_):
+    index = 0
+    if frame == T-1:
+        frame -= 1
+        index = 1
 
-        if score_list[frame][0][i] > SCORE_THRESHOLD_NEW_OBJECT:
+    detected_objects_num = len(score_list[frame][index])
+
+    #n_ = N
+    #if detected_objects_num < N:
+    #    n_ = detected_objects_num
+
+    cont = 0
+    for i in range(detected_objects_num):
+        if score_list[frame][index][i] > SCORE_THRESHOLD_NEW_OBJECT:    
             if i not in objects_already_tracked:
                 list_.append(i)
+                cont += 1
+        if cont == N:
+            break            
 
     return list_
 
@@ -129,52 +216,29 @@ def calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_fra
     next_object = []
 
     graph.append([])
-    for j in range(len(bbox_fea_list)-1):
+    for j in range(len(bbox_fea_list)):
     #for j in range(T-1):    # for each frame
 
-        top_n = add_objects(j, N, score_list, next_object)
-        #top_n = [i for i in range(N)] # In the first frame, we ever have the top-N ranked objects
+        top_n = add_objects(j, T, N, score_list, next_object)
         graph[j].extend(top_n)
         next_object = []
-        print(graph[j])
+
         for i in graph[j]:  # For each object. Initially, 0 to N
 
             if i == -1:
                 next_object.append(-1)
                 continue
 
-            target_index, _, _, _ = targetFind(i, [adj_mat[j]], reference_frame, SIMILARITY_THRESHOLD, T)
-            next_object.append(int(target_index))
-
-        """
-        # But the objects appeared in this frame and wasn't in the last frame?
-        objects_missing = list(set(top_n) - set(graph[j]))
-
-        for i in objects_missing:  # Initially, 0 to N
             target_index, _ = targetFind(i, [adj_mat[j]], reference_frame, SIMILARITY_THRESHOLD, T)
             next_object.append(int(target_index))
-        """
+
         graph.append(next_object)
 
+    # Verify new objects in the last frame
+    top_n = add_objects(j+1, T, N, score_list, next_object)
+    graph[j+1].extend(top_n)  
 
-    """
-    for i in range(N):
-        next_object = []
-        obj = i
-        next_object.append(obj)
-        for j in range(T-1):    # There are T-1 positions in adj_mat
-            # Calcule the most probaly position of object i
-            target_index, _ = targetFind(obj, [adj_mat[j]], reference_frame, SIMILARITY_THRESHOLD, T)
-            next_object.append(int(target_index))
-            obj = int(target_index)
-        graph.append(next_object)
-    """
     return graph
-
-
-
-
-
 
 def fileLines2List(file):
     # Using readlines()
@@ -196,16 +260,7 @@ def print_image(input, bbox_list, object_path, index):
 
     str_labels = np.asarray(fileLines2List("coco_labels.txt"))
 
-    #print(len(bbox_list[0]))    
-
-    #print(len(input)-1)
-    #exit()
-
-
     cont = 0
-    #for i in range(len(bbox_list)):
-    #    for j in range(len(bbox_list[i])):
-
 
     for i in range(len(object_path)):
 
@@ -215,8 +270,8 @@ def print_image(input, bbox_list, object_path, index):
         object_interest = int(object_path[i])
 
         # If the object exits of scene, we will not print then
-        if object_interest == -1:
-            return
+        #if object_interest == -1:
+        #    return
 
         # if we have 4 images, we have 3 bbox_list (each in th middle of each image pair),
         # containing the objects of the anterior (index 0) and posterior (index 1).
@@ -227,8 +282,6 @@ def print_image(input, bbox_list, object_path, index):
             box = bbox_list[i][0][object_interest]
 
         boxes = np.asarray([box])
-
-        #print(boxes.shape)
 
         image_tensor = torch.from_numpy(np.array(image))
         image_tensor = torch.moveaxis(image_tensor, 2, 0)
@@ -279,3 +332,64 @@ def img2bbox(input, temporal_graph, N_DOWNSTRAM):
     res = res.view(oi.shape[0], oi.shape[1], N_DOWNSTRAM, bbox_fea_vec.shape[1])
 
     return res, box_list
+
+def calculeObjectPath(graph, frame, obj_index):
+
+    object_path = []
+
+    print("calculando o path do objeto "+str(obj_index))
+    for f in graph[frame:]:     # For each frame
+        obj = f[obj_index]
+
+        if obj == -1:
+            return
+
+        object_path.append(obj)
+        
+    return object_path
+
+
+def batch_processing(input_abnormal, input_normal, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
+
+    #print(input_abnormal.shape[0])
+    #print(input_normal.shape[0])
+    #assert(input_abnormal.shape[0] == input_normal.shape[0])
+
+    # In the end of the dataset, the dataloader can supply samples with differents sizes in the shape[0]. So, m
+    # We need work with the lower one
+    bath_len = min(input_abnormal.shape[0], input_normal.shape[0])
+
+    batch_list = []
+    for i in range(bath_len):
+
+        input_normal_ = input_normal[i]
+        input_abnormal_ = input_abnormal[i]
+        print(input_normal_.shape)
+        print(input_abnormal_.shape)
+        adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor = temporal_graph.frames2temporalGraph(input_normal_)
+        adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn = temporal_graph.frames2temporalGraph(input_abnormal_)
+
+        SIMILARITY_THRESHOLD = 0.65#0.73
+        reference_frame = 0
+        obj_predicted = 0
+        graph_nor = calculeTargetAll(adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor, reference_frame, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+        graph_abn = calculeTargetAll(adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn, reference_frame, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+
+        print(graph_abn)
+        data_nor, object_path_nor = calculeTarget(graph_nor, score_list_nor, bbox_fea_list_nor, box_list_nor, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+        data_abn, object_path_abn = calculeTarget(graph_abn, score_list_abn, bbox_fea_list_abn, box_list_abn, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+
+        # First frame without objects
+        if data_nor is -1 or data_abn is -1:
+            print("Continuando")
+            continue
+
+        input_normal_, target_normal = data_nor 
+        input_abnormal_, target_abnormal = data_abn 
+
+        print(input_abnormal_.shape)
+        print(input_normal_.shape)
+
+        batch_list.append([input_abnormal_, input_normal_])
+
+    return batch_list

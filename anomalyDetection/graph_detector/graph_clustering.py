@@ -85,16 +85,7 @@ def make_obj_graph(object_path, bbox_fea_list, box_list):
 
     return clustering    
 
-def calculeObjectPath(graph, frame, obj_index):
 
-    object_path = []
-
-    print("calculando o path do objeto "+str(obj_index))
-    for f in graph[frame:]:     # For each frame
-        obj = f[obj_index]
-        object_path.append(obj)
-        
-    return object_path
 
 temporal_graph = temporalGraph.TemporalGraph(DEVICE, OBJECTS_ALLOWED, N_DOWNSTRAM)
 
@@ -154,7 +145,7 @@ for i in range(1):
             # Given the path graph of every object of every frame, make a single path graph of 
             # the 'obj' object starting at 'reference frame'
             
-            object_path = calculeObjectPath(graph, f, index_obj+last_index)
+            object_path = utils.calculeObjectPath(graph, f, index_obj+last_index)
 
             #clustering = make_obj_graph(object_path, bbox_fea_list, box_list)
 

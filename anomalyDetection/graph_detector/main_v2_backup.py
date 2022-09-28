@@ -83,10 +83,9 @@ def loadImage():
 
     return image
 
-
-
 def train(save_folder):
 
+    global SIMILARITY_THRESHOLD
     print("Iniciando treinamento para")
     print("T = " + str(T) + "; N = " + str(N) + "; LR = " + str(LR) + "; STRIDE: "+str(STRIDE)+"; SIMILARITY_THRESHOLD: " + str(SIMILARITY_THRESHOLD)) 
 
@@ -98,15 +97,16 @@ def train(save_folder):
     temporal_graph = temporalGraph.TemporalGraph(DEVICE, OBJECTS_ALLOWED, N)
     #temporal_graph.generateTemporalGraph()
 
-    batch_size = 1      # Aumentar no final
+    batch_size = 1              # Aumentar no final
+    max_sample_duration = 200   # Limitando as amostras por no máximo 200 arquivos.png
     # each video is a folder number-nammed
-    training_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/pretext_task_teste/05s/training"
-    train_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, training_folder),
+    training_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/training"
+    train_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, training_folder, max_sample_duration),
                                    batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)   
 
-    test_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/pretext_task_teste/05s/test"
-    test_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, test_folder, test=True),
+    test_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/test"
+    test_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, test_folder, max_sample_duration, test=True),
                                    batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)   
 
@@ -131,7 +131,7 @@ def train(save_folder):
     for step in tqdm(
             range(1, MAX_EPOCH + 1),
             total=MAX_EPOCH,
-            dynamic_ncols=TrueImplementar
+            dynamic_ncols=True
     ):    
 
         with torch.set_grad_enabled(True):
@@ -146,18 +146,20 @@ def train(save_folder):
             
             # Returns [T-1, obj1, obj2], beeing obj1 the num object detected in the first frame and obj2 in the second frame
             # [] if a frame does not have objects
-
-            adj_mat, bbox_fea_list, box_list, _ = temporal_graph.frames2temporalGraph(input)
-
+            adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input)
+            SIMILARITY_THRESHOLD = 0.65#0.73
+            graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
             # If in the first frame there is no object detected, so we have nothing to do here
             # The number of detected objects may be less than N. In this case we have nothing to do here
-            if len(bbox_fea_list[reference_frame][obj_predicted]) < N:
-                print("continuando")
-                continue       # Continue
+            #if len(bbox_fea_list[reference_frame][obj_predicted]) < N:
+            #    print("continuando")
+            #    continue       # Continue
 
-            data, object_path = calculeTarget(adj_mat, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+            #data, object_path = calculeTarget(adj_mat, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+            data, object_path = calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
             if data == -1:
+                print("Continuing because there aren't a object in the first frame ")
                 continue
 
             #print_image(input, box_list, object_path, step)
@@ -215,7 +217,7 @@ def run():
                 #LR = lr
                 SIMILARITY_THRESHOLD = st            # Threshold to verify if two detected are the same
 
-                FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N) + (4 * N)
+                FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N * (T-1)) + (4 * N * (T-1))
                 FEA_DIM_OUT = OBJECT_FEATURE_SIZE + 4
                 EXIT_TOKEN = FEA_DIM_OUT
 
@@ -245,13 +247,17 @@ def run():
 def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_checkpoint, downstream_folder):
     #global FEA_DIM_OUT, FEA_DIM_OUT
 
+    EXIT_TOKEN = FEA_DIM_OUT
+
     trining_log = open(os.path.join(downstream_folder, "training_log.txt"), 'w')
     test_log = open(os.path.join(downstream_folder, "test_log.txt"), 'w')
 
+    print("Carregando o checkpoint ")
+    print(pretext_checkpoint)
     model_pt = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT)
     model_pt.load_state_dict(torch.load(pretext_checkpoint))
 
-    temporal_graph = temporalGraph.TemporalGraph(DEVICE, OBJECTS_ALLOWED, N_DOWNSTRAM)
+    temporal_graph = temporalGraph.TemporalGraph(DEVICE, OBJECTS_ALLOWED, N)
 
     #model_pt.ModelPretext = nn.Sequential(*list(model_pt.ModelPretext.children())[:-1])
     prunned_model_pt = nn.Sequential(*list(model_pt.children())[:-2])
@@ -262,16 +268,16 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
     LR_DOWNSTREAM = 0.00005
 
-    batch_size = 4
-
-    normal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, normal = True, test=False), batch_size=batch_size, shuffle=False,
+    batch_size = 10
+    max_sample_duration = 250
+    normal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, normal = True, test=False), batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)
 
-    abnormal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, normal = False, test=False), batch_size=batch_size, shuffle=False,
+    abnormal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, normal = False, test=False), batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)
 
     list_ = "/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/files/graph_detector_test_05s.list"
-    test_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, list_, normal = True, test=True), batch_size=1, shuffle=False,
+    test_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, list_=list_, normal = True, test=True), batch_size=1, shuffle=False,
                                    num_workers=0, pin_memory=False)
 
 
@@ -279,10 +285,10 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
                             lr=LR_DOWNSTREAM, weight_decay=0.005)
 
 
-    auc = test_downstream(test_dataset, prunned_model_pt, model, viz, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, T, N_DOWNSTRAM)
-    test_log.write(str(auc) + " ")
-    test_log.flush()
-    best_auc = auc
+    auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
+    #test_log.write(str(auc) + " ")
+    #test_log.flush()
+    #best_auc = auc
 
 
     normal_loader = iter(normal_dataset)    
@@ -296,38 +302,38 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
         with torch.set_grad_enabled(True):
             model.train()
 
-            #if (step - 1) % len(data_loader) == 0:
-            #    data_loader = iter(train_loader)
+            if (step - 1) % len(normal_loader) == 0:
+                normal_loader = iter(normal_dataset)  
+
+            if (step - 1) % len(abnormal_loader) == 0:
+                abnormal_loader = iter(abnormal_dataset)                  
 
             # input: [T, W, H, C]
             input_normal = next(normal_loader)
+            input_normal = np.squeeze(input_normal)
+            input_normal = torch.squeeze(input_normal[0])
 
             input_abnormal = next(abnormal_loader)
+            input_abnormal = np.squeeze(input_abnormal)
+            input_abnormal = torch.squeeze(input_abnormal[0])
+            
+            batch_list = utils.batch_processing(input_abnormal, input_normal, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
-            # Obtain the bounding box from images
-            input_normal, box_list_normal = utils.img2bbox(input_normal, temporal_graph, N_DOWNSTRAM)
-            input_abnormal, box_list_abnormal = utils.img2bbox(input_abnormal, temporal_graph, N_DOWNSTRAM)
+            print(len(batch_list))
 
-            # If the actual frame does not have N_DOWNSTREAM object detected, continue
-            if input_normal is -1 or input_abnormal is -1:
-                print("Continuando")
+            input_abnormal = [i[0] for i in batch_list]
+            input_normal = [i[1] for i in batch_list]
+
+            if len(input_abnormal) == 0 or len(input_normal) == 0:
+                print("Nenhuma amostra possui objetos no primeiro frame")
                 continue
 
-            print(input_abnormal.shape)
-            print(input_normal.shape)
-
-            input_abnormal = input_abnormal.view(batch_size, -1).to(DEVICE)
-            box_list_abnormal = box_list_abnormal.view(batch_size, -1).to(DEVICE)
-            print(box_list_abnormal.shape)
-            print(input_abnormal.shape)
-            input_abnormal = torch.cat((box_list_abnormal, input_abnormal), dim=1)
+            input_abnormal = torch.stack(input_abnormal)
+            input_normal = torch.stack(input_normal)
 
             abnormal_res = model(prunned_model_pt(input_abnormal))
 
-            input_normal = input_normal.view(batch_size, -1).to(DEVICE)
-            box_list_normal = box_list_normal.view(batch_size, -1).to(DEVICE)
-            input_normal = torch.cat((box_list_normal, input_normal), dim=1)
-
+            print(input_normal.shape)
             normal_res = model(prunned_model_pt(input_normal))
 
             print(normal_res)
@@ -347,7 +353,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
             if step % len(normal_loader) == 0 and step > 10:
                 trining_log.flush()
 
-                auc = test_downstream(test_dataset, prunned_model_pt, model, viz, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N_DOWNSTRAM)
+                auc = test_downstream(test_dataset, prunned_model_pt, model, viz, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
                 #loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED)    
                 test_log.write(str(auc) + " ")
                 test_log.flush()
@@ -375,10 +381,11 @@ def runDownstream():
     OBJECT_FEATURE_SIZE = int(config['PARAMS']['OBJECT_FEATURE_SIZE'])  # OBJECT_FEATURE_SIZE
     SIMILARITY_THRESHOLD = float(config['PARAMS']['SIMILARITY_THRESHOLD'])
 
-    FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N) + (4 * N)
+    FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N * (T-1)) + (4 * N * (T-1))
     FEA_DIM_OUT = OBJECT_FEATURE_SIZE + 4
+    EXIT_TOKEN = FEA_DIM_OUT
 
-    N_DOWNSTRAM = 1         # Tamanho da janela para ver se é normal ou abnormal
+    #N_DOWNSTRAM = N         # Tamanho da janela para ver se é normal ou abnormal
     
 
     #pretext_path = "/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/graph_detector/results/pretext_task/"
@@ -389,14 +396,14 @@ def runDownstream():
     #LR_ = [LR*10, LR, LR/10]
     SIMILARITY_THRESHOLD_ = [SIMILARITY_THRESHOLD, SIMILARITY_THRESHOLD-0.1, SIMILARITY_THRESHOLD-0.2]
 
-
-
     for t in T_:
         for n in N_:
+
             #for lr in LR_:
             for st in SIMILARITY_THRESHOLD_:      
 
-                pretext_folder_sufix = "t="+str(T)+"-n="+str(N)+"-lr="+str(LR)+"-st="+str(SIMILARITY_THRESHOLD)
+                N_DOWNSTRAM = n
+                pretext_folder_sufix = "t="+str(t)+"-n="+str(n)+"-lr="+str(LR)+"-st="+str(st)
                 pretext_folder = os.path.join(OUTPUT_PATH_PRETEXT_TASK, pretext_folder_sufix)                    
                 pretext_checkpoint = os.path.join(pretext_folder, find_value(pretext_folder))
                 
@@ -407,11 +414,8 @@ def runDownstream():
                     print("Erro ao criar dir: ")
                     print(error)    
                     continue
-
-                t = n
+                
                 downstreamTask(t, n, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_checkpoint, downstream_folder)
-
-    
 
 
 def find_value(dir):

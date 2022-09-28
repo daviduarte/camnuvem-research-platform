@@ -8,20 +8,23 @@ import random
 
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
-
+# TODO: Can we merge the datasetPretext with the datasetDownstream? They seem to see similar
 class DatasetPretext(data.Dataset):
     #def __init__(self, args, is_normal=True, transform=None, test_mode=False, only_anomaly=False):
-    def __init__(self, T, STRIDE, training_folder, test = False):
+    def __init__(self, T, STRIDE, folder, max_sample_duration, test = False):
             
         self.T = T              # Frame qtt in any sample
         self.stride = STRIDE #self.T    # stride of the sliding window
-        self.training_folder = training_folder
+        self.folder = folder
         self.frame_folders = {}
         self.totalSample = 0
+        self.max_sample_duration = max_sample_duration  # In .png qtt. 250png files, sampled at 0.5 sec each, results in 125 seconds (~2min)        
         self._parse_list()
+        print("Quantidade total de amostras: " + str(self.totalSample))        
         self.num_frame = 0
         self.labels = None
         self.test = test
+
 
     def countFiles(self, path, extension):
         counter = 0
@@ -47,16 +50,28 @@ class DatasetPretext(data.Dataset):
 
         # Several folders with frames inside.
         self.totalSample = 0
-        for filename in os.listdir(self.training_folder):
+        for folder in os.listdir(self.folder):
+            folder = os.path.join(self.folder, folder)
+            print(folder)
+            if not os.path.isdir(folder):
+                print("Folder tree wrong. We need a 'noral' and 'abnormal' folder under training/test folder.")
+                exit()
 
-            frame_folder_path = os.path.join(self.training_folder, filename)
+            for filename in os.listdir(folder):
 
-            if os.path.isdir(frame_folder_path):
-                self.frame_folders['list'].append(frame_folder_path)
-                num = self.calcule_sample_num(frame_folder_path)
-                self.frame_folders['sample_num'].append(num)
-                self.totalSample += num
-        
+                frame_folder_path = os.path.join(folder, filename)
+
+                if os.path.isdir(frame_folder_path):
+                    self.frame_folders['list'].append(frame_folder_path)
+                    num = self.calcule_sample_num(frame_folder_path)
+                    
+                    # Due computational constrains, we need limit the size of samples. 
+                    if num > self.max_sample_duration:
+                        num = self.max_sample_duration
+
+                    self.frame_folders['sample_num'].append(num)
+                    self.totalSample += num
+
 
     def __getitem__(self, index):
 
@@ -64,24 +79,18 @@ class DatasetPretext(data.Dataset):
             # TODO: shufle param in the DataLoader is broken? This is a workaroud to get a random sample
             index = random.randint(0,self.totalSample-1)
 
-
         # 1 item is a windows of self.T frames
         sample_index = -1
         count = 0
-
 
         index = index+1         # Png frame files start at 1
         folder_index = 0
         for i, item in enumerate(self.frame_folders['sample_num']):   # for each sample num 'item' from each video 'i'
             count += item            
             if index <= count:             # The searched sample is in 'i' video
-                #offset = self.frame_folders['sample_num'][folder_index]  
                 
                 sample_index = (((index - (count - item))-1) * self.stride)+1
-                #if count > 0:
-                #    sample_index = index - count
 
-                #sampleIndex =  count + (index * self.stride)
                 break
             folder_index += 1
 
@@ -102,14 +111,6 @@ class DatasetPretext(data.Dataset):
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
 
             sample.append(img)  
-
-            # Read the adjacency matrix of this 5 frames that compose the labels
-            # We ever have -1 adjacenct matrix than frames, because a a.m. is a connection between two frames
-            #if i < self.T-1:
-                #am = np.load(pathLabel)  
-                #label.append(am)
-
-        #   [T, 1024]   [T-1, 1024]
         
         sample = np.stack(sample, axis=0)
 
