@@ -20,7 +20,7 @@ def getFrameQtd(frame_folder_path):
 
 #param labels A txt file path containing all test/anomaly frame level labels
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
-def getLabels(labels, list):
+def getLabels(labels, list_test):
 
 
     # Colocar isso no config.ini depois
@@ -35,6 +35,7 @@ def getLabels(labels, list):
 
     gt = []
     qtd_total_frame = 0
+    anomaly_qtd = 0
     for line in lines:        
 
         line = line.strip()
@@ -67,26 +68,40 @@ def getLabels(labels, list):
 
         gt.append([video_name, frame_label])
 
+        anomaly_qtd += 1
+
+
+
 
     #############################################################
 
-    list = []
-    for filename in os.listdir(test_anomaly_folder):
-        f = os.path.join(test_anomaly_folder, filename)
-        # checking if it is a file
-        if os.path.isfile(f):
-            list.append(f)
+    lines = []
+    with open(list_test) as f:
+        lines = f.readlines()
+        lines = [line.strip() for line in lines]
+
+
+    list_ = []
+    cont = 0
+    for path in lines:
+        cont+=1
+        if cont <= anomaly_qtd:
+            continue
+        filename = os.path.basename(path)  
+        list_.append(os.path.join(test_normal_folder, filename[:-4]+'.mp4'))
+
 
     # Lets get the normal videos
     qtd_total_frame = 0
-    for video_path in list:
+    for video_path in list_:
         video_path = video_path.strip()
 
         # First we create an array with 'frame_qtd' zeros
         # Zeros represents the 
-        print(video_path)
+        
         cap = cv2.VideoCapture(video_path)
         frame_qtd = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
         qtd_total_frame += frame_qtd
 
         frame_label = np.zeros(frame_qtd)   # All frames here are normal.
@@ -123,11 +138,12 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
         for video_index, video in enumerate(labels):    # For each video
 
             # Adjust the labels to the truncated frame due computation capability militation
-            truncated_frame_qtd = int(max_sample_duration * NUM_SAMPLE_FRAME)    # The video has max this num of frame
+            truncated_frame_qtd = int((max_sample_duration) * NUM_SAMPLE_FRAME)    # The video has max this num of frame
             if len(video[1]) > truncated_frame_qtd:
                 video[1] = video[1][0:truncated_frame_qtd]                  # If needed, truncate it
 
             qtdFrame = len(video[1])
+            print("Quantidade d eframes: " + str(qtdFrame))
             window = 0
             png_conter = 0
 
@@ -135,6 +151,7 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
             input= next(dataloader)
 
             for i, j in enumerate(video[1]):     # For each label in this video
+
                 acc+= 1
 
                 # The first NUM_SAMPLE_FRAME * T frames will be discarted, because the incomplete window
@@ -151,8 +168,8 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
                     continue
 
                 print("Frame " + str(acc))
-                #print("Pegando o " + str(png_conter) + " png")
-                #print("Estamos no " + str(i) + " frame")
+                print("Pegando o " + str(png_conter) + " png")
+                print("Estamos no " + str(i) + " frame")
                 input= next(dataloader)
                 input = np.squeeze(input)
                 png_conter += 1

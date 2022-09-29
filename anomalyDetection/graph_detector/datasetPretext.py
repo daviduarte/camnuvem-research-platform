@@ -38,6 +38,11 @@ class DatasetPretext(data.Dataset):
 
     def calcule_sample_num(self, frame_folder_path):
         qtd = self.countFiles(frame_folder_path, 'png')
+
+        # Due computational constrains, we need limit the size of samples. 
+        if qtd > self.max_sample_duration:
+            qtd = self.max_sample_duration
+
         samplesNum = int(((qtd - self.T) / self.stride) + 1)
 
         return samplesNum
@@ -64,10 +69,7 @@ class DatasetPretext(data.Dataset):
                 if os.path.isdir(frame_folder_path):
                     self.frame_folders['list'].append(frame_folder_path)
                     num = self.calcule_sample_num(frame_folder_path)
-                    
-                    # Due computational constrains, we need limit the size of samples. 
-                    if num > self.max_sample_duration:
-                        num = self.max_sample_duration
+                
 
                     self.frame_folders['sample_num'].append(num)
                     self.totalSample += num

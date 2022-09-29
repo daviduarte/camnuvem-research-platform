@@ -265,7 +265,6 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     # A entrada vai ser o tamanho da penútima saída do Pretext Model
     model = modelDownstream.ModelDownstream(128).to(DEVICE)
 
-
     LR_DOWNSTREAM = 0.00005
 
     batch_size = 10

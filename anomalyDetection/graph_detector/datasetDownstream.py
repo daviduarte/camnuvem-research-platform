@@ -84,6 +84,10 @@ class DatasetDownstream(data.Dataset):
 
     def calcule_sample_num(self, frame_folder_path):
         qtd = self.countFiles(frame_folder_path, 'png')
+
+        if qtd > self.max_sample_duration:
+            qtd = self.max_sample_duration
+
         samplesNum = int(((qtd - self.T) / self.stride) + 1)
 
         return samplesNum
@@ -99,8 +103,7 @@ class DatasetDownstream(data.Dataset):
             if os.path.isdir(frame_folder_path):
                 self.frame_folders['list'].append(frame_folder_path)
                 num = self.calcule_sample_num(frame_folder_path)
-                if num > self.max_sample_duration:
-                    num = self.max_sample_duration
+
                 self.frame_folders['sample_num'].append(num)
 
                 totalSample += num
@@ -121,10 +124,8 @@ class DatasetDownstream(data.Dataset):
             if os.path.isdir(frame_folder_path):
                 self.frame_folders['list'].append(frame_folder_path)
                 num = self.calcule_sample_num(frame_folder_path)
-                if num > self.max_sample_duration:
-                    num = self.max_sample_duration
-                    
                 self.frame_folders['sample_num'].append(num)
+                
                 qtd_total_frame = self.calcule_totl_qtd_frame(frame_folder_path)
                 self.frame_folders['qtd_total_frame'].append(qtd_total_frame)   
                 
@@ -176,6 +177,7 @@ class DatasetDownstream(data.Dataset):
             # Read the 'self.T' frames that compose the sample
             
             pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
+            print(pathSample)
             img = cv2.imread(pathSample)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
 

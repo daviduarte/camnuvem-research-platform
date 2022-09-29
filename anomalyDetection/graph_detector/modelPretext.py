@@ -8,10 +8,7 @@ import torch.nn.init as torch_init
 class ModelPretext(nn.Module):
 	def __init__(self, num_feat_in, num_feat_out):
 		super(ModelPretext, self).__init__()	
-		print("num_feat_in: ")
-		print(num_feat_in)
-		print("num_feat_out: ")
-		print(num_feat_out)		
+
 		self.fc1 = nn.Linear(num_feat_in, 512)
 		self.fc2 = nn.Linear(512, 128)
 		self.fc3 = nn.Linear(128, num_feat_out)   
