@@ -143,7 +143,6 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
                 video[1] = video[1][0:truncated_frame_qtd]                  # If needed, truncate it
 
             qtdFrame = len(video[1])
-            print("Quantidade d eframes: " + str(qtdFrame))
             window = 0
             png_conter = 0
 
@@ -167,9 +166,6 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
                     window += 1
                     continue
 
-                print("Frame " + str(acc))
-                print("Pegando o " + str(png_conter) + " png")
-                print("Estamos no " + str(i) + " frame")
                 input= next(dataloader)
                 input = np.squeeze(input)
                 png_conter += 1
@@ -222,12 +218,6 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
                 window += 1
                 
             window = 0      
-
-
-    print("Dimensões do gt: ")
-    print(len(gt))
-    print("Dimensões do scores: ")
-    print(len(scores))
 
     
     #gt = list(gt)

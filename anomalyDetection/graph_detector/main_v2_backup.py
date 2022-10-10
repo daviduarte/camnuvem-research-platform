@@ -85,7 +85,7 @@ def loadImage():
 
 def train(save_folder):
 
-    global SIMILARITY_THRESHOLD
+    global SIMILARITY_THRESHOLD, MAX_EPOCH
     print("Iniciando treinamento para")
     print("T = " + str(T) + "; N = " + str(N) + "; LR = " + str(LR) + "; STRIDE: "+str(STRIDE)+"; SIMILARITY_THRESHOLD: " + str(SIMILARITY_THRESHOLD)) 
 
@@ -127,7 +127,10 @@ def train(save_folder):
     test_log.write(str(loss_mean) + " ")
     test_log.flush()
 
+    
+
     data_loader = iter(train_loader)    
+    MAX_EPOCH = len(data_loader) * MAX_EPOCH
     for step in tqdm(
             range(1, MAX_EPOCH + 1),
             total=MAX_EPOCH,
@@ -180,7 +183,7 @@ def train(save_folder):
 
             trining_log.write(str(loss_.item()) + " ")
 
-            if step % len(data_loader) == 0 and step > 10:
+            if step % len(data_loader) == 0:# and step > 10:
                 trining_log.flush()
                 loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED)    
                 test_log.write(str(loss_mean) + " ")
@@ -204,42 +207,40 @@ def run():
     T_ = [T, T+1, T+2, T+3]
     N_ = [N, N+1, N+2]
     #LR_ = [LR*10, LR, LR/10]
-    SIMILARITY_THRESHOLD_ = [SIMILARITY_THRESHOLD, SIMILARITY_THRESHOLD-0.1, SIMILARITY_THRESHOLD-0.2]
-
-
+    #SIMILARITY_THRESHOLD_ = [SIMILARITY_THRESHOLD, SIMILARITY_THRESHOLD-0.1, SIMILARITY_THRESHOLD-0.2]
 
     for t in T_:
         for n in N_:
             #for lr in LR_:
-            for st in SIMILARITY_THRESHOLD_:
-                T = t
-                N = n
-                #LR = lr
-                SIMILARITY_THRESHOLD = st            # Threshold to verify if two detected are the same
+            #for st in SIMILARITY_THRESHOLD_:
+            T = t
+            N = n
+            #LR = lr
+            #SIMILARITY_THRESHOLD = st            # Threshold to verify if two detected are the same
 
-                FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N * (T-1)) + (4 * N * (T-1))
-                FEA_DIM_OUT = OBJECT_FEATURE_SIZE + 4
-                EXIT_TOKEN = FEA_DIM_OUT
+            FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N * (T-1)) + (4 * N * (T-1))
+            FEA_DIM_OUT = OBJECT_FEATURE_SIZE + 4
+            EXIT_TOKEN = FEA_DIM_OUT
 
-                #if (T == 2 and N == 1 and LR == 0.005) or (T == 2 and N == 1 and LR == 0.0005) or (T == 2 and N == 1 and LR == 0.00005):
-                #    if st == 0.7:
-                #        continue
-                #if (T == 2 and N == 2 and LR == 0.0005):
-                #    if st == 0.7 or st == 0.6 or st == 0.5:
-                #        continue
+            #if (T == 2 and N == 1 and LR == 0.005) or (T == 2 and N == 1 and LR == 0.0005) or (T == 2 and N == 1 and LR == 0.00005):
+            #    if st == 0.7:
+            #        continue
+            #if (T == 2 and N == 2 and LR == 0.0005):
+            #    if st == 0.7 or st == 0.6 or st == 0.5:
+            #        continue
 
 
-                save_folder = "t="+str(T)+"-n="+str(N)+"-lr="+str(LR)+"-st="+str(SIMILARITY_THRESHOLD)
-                save_folder = os.path.join(OUTPUT_PATH_PRETEXT_TASK, save_folder)
+            save_folder = "t="+str(T)+"-n="+str(N)+"-lr="+str(LR)+"-st="+str(SIMILARITY_THRESHOLD)
+            save_folder = os.path.join(OUTPUT_PATH_PRETEXT_TASK, save_folder)
 
-                try:
-                    os.mkdir(save_folder)
-                except OSError as error:
-                    print("Erro ao criar dir: ")
-                    print(error)    
-                    continue
+            try:
+                os.mkdir(save_folder)
+            except OSError as error:
+                print("Erro ao criar dir: ")
+                print(error)    
+                continue
 
-                train(save_folder)
+            train(save_folder)
 
 
 
@@ -254,6 +255,12 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
     print("Carregando o checkpoint ")
     print(pretext_checkpoint)
+
+    RANDOM_WEIGHTS = 1
+    if RANDOM_WEIGHTS == 1:
+        print("ATENÇÃO, VC ESTÁ CARREGANDO UM PRETEXT MODEL RANDOMIZADO")
+        pretext_checkpoint = "/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/graph_detector/results/pretext_task/t=5-n=5-lr=5e-05-st=0.7_RANDOM_WEIGHTS/model_random_weights.pkl"
+
     model_pt = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT)
     model_pt.load_state_dict(torch.load(pretext_checkpoint))
 
@@ -261,14 +268,15 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
     #model_pt.ModelPretext = nn.Sequential(*list(model_pt.ModelPretext.children())[:-1])
     prunned_model_pt = nn.Sequential(*list(model_pt.children())[:-2])
+    prunned_model_pt.train()
     
     # A entrada vai ser o tamanho da penútima saída do Pretext Model
     model = modelDownstream.ModelDownstream(128).to(DEVICE)
 
     LR_DOWNSTREAM = 0.00005
 
-    batch_size = 10
-    max_sample_duration = 250
+    batch_size = 250
+    max_sample_duration = 300
     normal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, normal = True, test=False), batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)
 
@@ -285,9 +293,9 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
 
     auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
-    #test_log.write(str(auc) + " ")
-    #test_log.flush()
-    #best_auc = auc
+    test_log.write(str(auc) + " ")
+    test_log.flush()
+    best_auc = auc
 
 
     normal_loader = iter(normal_dataset)    
@@ -300,6 +308,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
         with torch.set_grad_enabled(True):
             model.train()
+            prunned_model_pt.train()
 
             if (step - 1) % len(normal_loader) == 0:
                 normal_loader = iter(normal_dataset)  
@@ -352,7 +361,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
             if step % len(normal_loader) == 0 and step > 10:
                 trining_log.flush()
 
-                auc = test_downstream(test_dataset, prunned_model_pt, model, viz, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
+                auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
                 #loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED)    
                 test_log.write(str(auc) + " ")
                 test_log.flush()
@@ -419,6 +428,7 @@ def runDownstream():
 
 def find_value(dir):
 
+    return ''
     score = []
     files = []
     # Find all files with model*.txt in the 'dir' folder
