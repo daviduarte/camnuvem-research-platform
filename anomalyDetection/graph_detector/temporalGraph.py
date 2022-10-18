@@ -10,13 +10,13 @@ import objectDetector
 from utils import fileLines2List
 import PIL
 import random
-
+import time
 
 import cv2
 
 
 class TemporalGraph:
-	def __init__(self, device, OBJECTS_ALLOWED, N):
+	def __init__(self, device, buffer_size, OBJECTS_ALLOWED, N, STRIDE):
 		self.DEVICE = device
 		self.OBJECTS_ALLOWED = np.asarray(OBJECTS_ALLOWED)
 		object_detector = objectDetector.ObjectDetector(device)
@@ -27,6 +27,11 @@ class TemporalGraph:
 		self.path_test_normal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/test/normal"				
 		self.path_test_abnormal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/test/anomaly"				
 		self.N = N 			# For each frame, we will consider the top N scores objects
+		self.STRIDE = STRIDE
+		self.buffer_size = buffer_size
+		self.buffer = []	# [[folder_index, img_index], [boxes1, scores1, labels1, bbox_fea_vec1]]
+							#				ID             , 				CNN result
+
 
 	# Get only the top 'self.N' objects with better scores
 	def filterLowScores(self, prediction):
@@ -289,9 +294,28 @@ class TemporalGraph:
 
 		return output
 
+	def acessBuffer(self, key, img):
+		elements = [i[0] for i in self.buffer]	
+
+		# If this sample is in buffer, we do not need run inference again, lets only get the result from buffer
+		if key in elements:
+			index = elements.index(key)
+			boxes1, scores1, labels1, bbox_fea_vec1 = self.buffer[index][1]
+		else:
+			prediction = self.inference(img)
+			boxes1, scores1, labels1, bbox_fea_vec1  = self.filterLowScores(prediction)      
+				
+			# If this image does not exist in buffer, add it
+			if len(self.buffer) == self.buffer_size:
+				del self.buffer[0]
+
+			self.buffer.append([key, [boxes1, scores1, labels1, bbox_fea_vec1]])		
+
+		return boxes1, scores1, labels1, bbox_fea_vec1
+
 	# receive a set of frames [T, W, H, C]
 	# return a set of T-1 adjacency matrix connecting every object in a frame pair
-	def frames2temporalGraph(self, images):
+	def frames2temporalGraph(self, images, folder_index, sample_index):
 
 		ma = []
 		num_img = images.shape[0]
@@ -301,19 +325,27 @@ class TemporalGraph:
 
 		for i in range(num_img-1):
 			img1, img2 = images[i], images[i+1]
+
+			# Verify if img1 exists in self.buffer
+			img_index = sample_index + i
+
+			key = [folder_index, img_index]
 			
-			prediction1 = self.inference(img1)
-			boxes1, scores1, labels1, bbox_fea_vec1  = self.filterLowScores(prediction1)      
-			data1 = (boxes1, scores1, labels1, bbox_fea_vec1)    		
+			boxes1, scores1, labels1, bbox_fea_vec1 = self.acessBuffer(key, img1)
+			data1 = (boxes1, scores1, labels1, bbox_fea_vec1) 
 
+			# Verify if img1 exists in self.buffer
+			img_index = sample_index + i+1
 
-			prediction2 = self.inference(img2)
-			boxes2, scores2, labels2, bbox_fea_vec2  = self.filterLowScores(prediction2)      
-			data2 = (boxes2, scores2, labels2, bbox_fea_vec2)  
+			key = [folder_index, img_index]
+
+			boxes2, scores2, labels2, bbox_fea_vec2 = self.acessBuffer(key, img2)	
+			data2 = (boxes2, scores2, labels2, bbox_fea_vec2) 		
 
 			bbox_fea_list.append([bbox_fea_vec1, bbox_fea_vec2])
 			box_list.append([boxes1, boxes2])
 			score_list.append([scores1, scores2])
+			
 			adjacency_matrix = self.make_temporal_graph(data1, data2)
 
 			if len(bbox_fea_vec2) == 0 : 
@@ -324,6 +356,4 @@ class TemporalGraph:
 			ma.append(adjacency_matrix)
 			#path_ad_mat = os.path.join(foldername, str(i)+'.adj.npy')			
 
-
-		#ma = np.stack(ma, axis=0)
 		return ma, bbox_fea_list, box_list, score_list

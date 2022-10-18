@@ -5,9 +5,9 @@ import numpy as np
 
 
 
-def test(model, loss, test_loader, reference_frame, obj_predicted, viz, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED):    
+def test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE):    
     print("Testing")
-    temporal_graph = temporalGraph.TemporalGraph(DEVICE, OBJECTS_ALLOWED, N)
+    temporal_graph = temporalGraph.TemporalGraph(DEVICE, buffer_size, OBJECTS_ALLOWED, N, STRIDE)
     data_loader_test = iter(test_loader)
     with torch.no_grad():
         model.eval()

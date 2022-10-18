@@ -79,8 +79,6 @@ class DatasetDownstream(data.Dataset):
 
         return length
 
-        return qtd
-
 
     def calcule_sample_num(self, frame_folder_path):
         qtd = self.countFiles(frame_folder_path, 'png')
@@ -103,7 +101,6 @@ class DatasetDownstream(data.Dataset):
             if os.path.isdir(frame_folder_path):
                 self.frame_folders['list'].append(frame_folder_path)
                 num = self.calcule_sample_num(frame_folder_path)
-
                 self.frame_folders['sample_num'].append(num)
 
                 totalSample += num
@@ -177,6 +174,7 @@ class DatasetDownstream(data.Dataset):
             # Read the 'self.T' frames that compose the sample
             
             pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
+
             img = cv2.imread(pathSample)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
 
@@ -185,9 +183,7 @@ class DatasetDownstream(data.Dataset):
         #   [T, 1024]   [T-1, 1024]
         sample = np.stack(sample, axis=0)
 
-
-
-        return sample, folder_index
+        return sample, folder_index, sample_index
 
 
     def __getitem__(self, index):
@@ -202,35 +198,16 @@ class DatasetDownstream(data.Dataset):
 
         index = index+1         # Png frame files start at 1
 
-        #if index > self.T:
-        #index = index - self.T + 1
+        sample, folder_index, sample_index = self.getImage(index)
 
-        sample, folder_index = self.getImage(index)
-        """
-        else:
-            index = 1 
-            sample, folder_index = self.getImage(index)
-
-            # Create some trick to inference the first frames. 
-            # In the first frames, when we don't have a windows of self.T frame to predict the anomality of a frame,
-            # we have to create a windows composed of black images, used to predict the last frame.
-            shape = sample.shape
-            sample_new = np.zeros((shape[0], shape[1], shape[2], shape[3]))
-            # ok, case index == self.T == 1 works
-            
-            sample_new[-1] = sample[index-1]    # Put image 'index' in the last position of sample_new.
-                
-            sample = sample_new
-        """
-        
         sample = sample.astype('float32')
 
 
-        if self.test:
-            return sample, label, self.frame_folders['qtd_total_frame'][folder_index], self.frame_folders['id'][folder_index]
+        #if self.test:
+        return sample, label, int(folder_index), int(sample_index)
 
         # Returns [T, H, W, C]
-        return sample, label
+        #return sample, label
 
     def get_label(self):
 

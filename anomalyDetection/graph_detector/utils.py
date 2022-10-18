@@ -102,7 +102,7 @@ def calculeTarget_deprecated(adj_mat, bbox_fea_list, box_list, reference_frame, 
 
     return [input, target], object_path    
 
-def calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
+def calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
 
     # First we have to calculate the path of first object, that will be our label.
     object_path = []
@@ -210,7 +210,7 @@ def add_objects(frame, T, N, score_list, objects_already_tracked):
 
 
 # Calcule the object path of all objects detected in every windows frame. 
-def calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
+def calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
 
     graph = []  # 3d adjacency matryx, objects through time
     next_object = []
@@ -349,35 +349,35 @@ def calculeObjectPath(graph, frame, obj_index):
     return object_path
 
 
-def batch_processing(input_abnormal, input_normal, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
-
-    #print(input_abnormal.shape[0])
-    #print(input_normal.shape[0])
-    #assert(input_abnormal.shape[0] == input_normal.shape[0])
+def batch_processing(input_abnormal, input_normal, temporal_graph_normal, temporal_graph_abnormal, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
 
     # In the end of the dataset, the dataloader can supply samples with differents sizes in the shape[0]. So, m
     # We need work with the lower one
-    bath_len = min(input_abnormal.shape[0], input_normal.shape[0])
+    bath_len = min(input_abnormal[0].shape[0], input_normal[0].shape[0])
 
     batch_list = []
     for i in range(bath_len):
 
-        input_normal_ = input_normal[i]
-        input_abnormal_ = input_abnormal[i]
-        print(input_normal_.shape)
-        print(input_abnormal_.shape)
-        adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor = temporal_graph.frames2temporalGraph(input_normal_)
-        adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn = temporal_graph.frames2temporalGraph(input_abnormal_)
+        
+        input_normal_folder_index = input_normal[2][i]
+        input_normal_sample_index = input_normal[3][i]
+        input_normal_ = input_normal[0][i]
+
+        input_abnormal_folder_index = input_abnormal[2][i]
+        input_abnormal_sample_index = input_abnormal[3][i]
+        input_abnormal_ = input_abnormal[0][i]
+
+        adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor = temporal_graph_normal.frames2temporalGraph(input_normal_, input_normal_folder_index, input_normal_sample_index)
+        adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn = temporal_graph_abnormal.frames2temporalGraph(input_abnormal_, input_abnormal_folder_index, input_abnormal_sample_index)
 
         SIMILARITY_THRESHOLD = 0.65#0.73
         reference_frame = 0
         obj_predicted = 0
-        graph_nor = calculeTargetAll(adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor, reference_frame, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
-        graph_abn = calculeTargetAll(adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn, reference_frame, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+        graph_nor = calculeTargetAll(adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+        graph_abn = calculeTargetAll(adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
-        print(graph_abn)
-        data_nor, object_path_nor = calculeTarget(graph_nor, score_list_nor, bbox_fea_list_nor, box_list_nor, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
-        data_abn, object_path_abn = calculeTarget(graph_abn, score_list_abn, bbox_fea_list_abn, box_list_abn, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+        data_nor, object_path_nor = calculeTarget(graph_nor, score_list_nor, bbox_fea_list_nor, box_list_nor, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+        data_abn, object_path_abn = calculeTarget(graph_abn, score_list_abn, bbox_fea_list_abn, box_list_abn, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
         # First frame without objects
         if data_nor is -1 or data_abn is -1:
@@ -386,9 +386,6 @@ def batch_processing(input_abnormal, input_normal, temporal_graph, DEVICE, EXIT_
 
         input_normal_, target_normal = data_nor 
         input_abnormal_, target_abnormal = data_abn 
-
-        print(input_abnormal_.shape)
-        print(input_normal_.shape)
 
         batch_list.append([input_abnormal_, input_normal_])
 

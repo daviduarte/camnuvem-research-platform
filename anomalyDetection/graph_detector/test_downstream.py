@@ -118,7 +118,7 @@ def getLabels(labels, list_test):
 
 
 
-def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device, ten_crop, gt_path, OBJECTS_ALLOWED, N, T, EXIT_TOKEN, only_abnormal = False):
+def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, STRIDE_TEST, device, ten_crop, gt_path, OBJECTS_ALLOWED, N, T, EXIT_TOKEN, only_abnormal = False):
 
     dataloader = iter(dataloader)
 
@@ -129,7 +129,7 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
 
     gt = []
     scores = []
-    temporal_graph = temporalGraph.TemporalGraph(device, OBJECTS_ALLOWED, N)    
+    temporal_graph = temporalGraph.TemporalGraph(device, T, OBJECTS_ALLOWED, N, STRIDE_TEST)    
     with torch.no_grad():
         model_pt.eval()
         model_ds.eval()    
@@ -171,7 +171,7 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
                 png_conter += 1
 
                 # We cannot accept to exist more .png than frames. If is the case, some MERDA occuried
-                while input[3].cpu().flatten() != video_index:
+                while input[2].cpu().flatten() != video_index:
                     print("Há mais png do que frames")
                     print("input: ")
                     print(input[3])
@@ -185,16 +185,21 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, device
                     print(len(scores))
                     exit()
 
+                # Infs used to get inference result in the buffer, to preserve computing time
+                folder_index = input[2]
+                sample_index = input[3]
+
+
                 frames = torch.squeeze(input[0])
-                adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(frames)
+                adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(frames, folder_index, sample_index)
 
                 SIMILARITY_THRESHOLD = 0.65#0.73
                 reference_frame = 0
                 obj_predicted = 0
-                graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, temporal_graph, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+                graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
 
-                data, object_path = utils.calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+                data, object_path = utils.calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
                 if data == -1:
                     # TODO: WE DO NOT CAN CONSIDER AS NORMAL JUST BECAUSE THERE IS NO OBJECTS IN THE FIRST FRAME.

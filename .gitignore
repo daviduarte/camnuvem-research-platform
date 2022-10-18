@@ -1,4 +1,10 @@
 anomalyDetection/RTFM/ckpt/
+anomalyDetection/RTFM/list/
 anomalyDetection/WSAL/weights/
 anomalyDetection/files/
 extractI3d/pytorch-resnet3d/pretrained/
+anomalyDetection/graph_detector/results/
+anomalyDetection/graph_detector/venv
+anomalyDetection/graph_detector/video_teste
+extractI3d/Pytorch_C3D_Feature_Extractor_remover
+extractI3d/AlphaPose_remover/

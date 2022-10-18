@@ -94,7 +94,8 @@ def train(save_folder):
     trining_log = open(training_loss_log, 'w')
     test_log = open(test_loss_log, 'w')
 
-    temporal_graph = temporalGraph.TemporalGraph(DEVICE, OBJECTS_ALLOWED, N)
+    buffer_size = T
+    temporal_graph = temporalGraph.TemporalGraph(DEVICE, buffer_size, OBJECTS_ALLOWED, N, STRIDE)
     #temporal_graph.generateTemporalGraph()
 
     batch_size = 1              # Aumentar no final
@@ -123,9 +124,9 @@ def train(save_folder):
     reference_frame = 0
 
     best_loss = float("+Inf")    
-    loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED)    
-    test_log.write(str(loss_mean) + " ")
-    test_log.flush()
+    #loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
+    #test_log.write(str(loss_mean) + " ")
+    #test_log.flush()
 
     
 
@@ -185,7 +186,7 @@ def train(save_folder):
 
             if step % len(data_loader) == 0:# and step > 10:
                 trining_log.flush()
-                loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED)    
+                loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
                 test_log.write(str(loss_mean) + " ")
                 test_log.flush()
 
@@ -264,7 +265,11 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     model_pt = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT)
     model_pt.load_state_dict(torch.load(pretext_checkpoint))
 
-    temporal_graph = temporalGraph.TemporalGraph(DEVICE, OBJECTS_ALLOWED, N)
+    batch_size = 200
+    STRIDE = T
+    # We use two temporal graph instances because we have an individual buffer to save computational power
+    temporal_graph_normal = temporalGraph.TemporalGraph(DEVICE, batch_size, OBJECTS_ALLOWED, N, STRIDE)
+    temporal_graph_abnormal = temporalGraph.TemporalGraph(DEVICE, batch_size, OBJECTS_ALLOWED, N, STRIDE)
 
     #model_pt.ModelPretext = nn.Sequential(*list(model_pt.ModelPretext.children())[:-1])
     prunned_model_pt = nn.Sequential(*list(model_pt.children())[:-2])
@@ -275,7 +280,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
     LR_DOWNSTREAM = 0.00005
 
-    batch_size = 250
+    
     max_sample_duration = 300
     normal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, normal = True, test=False), batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)
@@ -292,7 +297,9 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
                             lr=LR_DOWNSTREAM, weight_decay=0.005)
 
 
-    auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
+    # TODO: BETTER WAY TO PROPAGATE THE STRIDE TO DATASETDOWNSTREAM
+    STRIDE_TEST = 1     #
+    auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, STRIDE_TEST, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
     test_log.write(str(auc) + " ")
     test_log.flush()
     best_auc = auc
@@ -316,18 +323,23 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
             if (step - 1) % len(abnormal_loader) == 0:
                 abnormal_loader = iter(abnormal_dataset)                  
 
-            # input: [T, W, H, C]
+            # [[sample, label, folder_index, sample_index] ...]
             input_normal = next(normal_loader)
-            input_normal = np.squeeze(input_normal)
-            input_normal = torch.squeeze(input_normal[0])
+            #print(len(input_normal))
+            #print(input_normal[0].shape)
+            #print(input_normal[1].shape)
+            #print(input_normal[2].shape)
+            #print(input_normal[3].shape)
+            #exit()
+            #input_normal = np.squeeze(input_normal)
+            #input_normal = torch.squeeze(input_normal)
 
             input_abnormal = next(abnormal_loader)
-            input_abnormal = np.squeeze(input_abnormal)
-            input_abnormal = torch.squeeze(input_abnormal[0])
+            #input_abnormal = np.squeeze(input_abnormal)
+            #input_abnormal = torch.squeeze(input_abnormal)
             
-            batch_list = utils.batch_processing(input_abnormal, input_normal, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+            batch_list = utils.batch_processing(input_abnormal, input_normal, temporal_graph_normal, temporal_graph_abnormal, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
-            print(len(batch_list))
 
             input_abnormal = [i[0] for i in batch_list]
             input_normal = [i[1] for i in batch_list]
@@ -341,11 +353,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
             abnormal_res = model(prunned_model_pt(input_abnormal))
 
-            print(input_normal.shape)
             normal_res = model(prunned_model_pt(input_normal))
-
-            print(normal_res)
-            print(abnormal_res)
 
             downstramLoss = losses.DownstramLoss(normal_res, abnormal_res)
             cost = downstramLoss()
@@ -361,7 +369,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
             if step % len(normal_loader) == 0 and step > 10:
                 trining_log.flush()
 
-                auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
+                auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, STRIDE_TEST, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
                 #loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED)    
                 test_log.write(str(auc) + " ")
                 test_log.flush()
@@ -445,9 +453,9 @@ def find_value(dir):
 if __name__ == '__main__':
 
     # Search training parameter
-    #run()
+    run()
     #downstreamTask()
-    runDownstream()
+    #runDownstream()
 
 
 
