@@ -117,7 +117,7 @@ class DatasetPretext(data.Dataset):
         sample = np.stack(sample, axis=0)
 
         # Returns [T, H, W, C]
-        return sample
+        return sample, folder_index, sample_index
 
 
     def __len__(self):

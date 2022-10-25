@@ -26,7 +26,6 @@ import objectDetector
 import os
 import csv
 
-
 import modelPretext
 import modelDownstream
 import datasetPretext
@@ -94,7 +93,7 @@ def train(save_folder):
     trining_log = open(training_loss_log, 'w')
     test_log = open(test_loss_log, 'w')
 
-    buffer_size = T
+    buffer_size = T*5
     temporal_graph = temporalGraph.TemporalGraph(DEVICE, buffer_size, OBJECTS_ALLOWED, N, STRIDE)
     #temporal_graph.generateTemporalGraph()
 
@@ -124,9 +123,10 @@ def train(save_folder):
     reference_frame = 0
 
     best_loss = float("+Inf")    
-    #loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
-    #test_log.write(str(loss_mean) + " ")
-    #test_log.flush()
+    loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
+    test_log.write(str(loss_mean) + " ")
+    test_log.flush()
+    torch.save(model.state_dict(), os.path.join(save_folder, MODEL_NAME + '{}.pkl'.format(0)))                    
 
     
 
@@ -141,18 +141,25 @@ def train(save_folder):
         with torch.set_grad_enabled(True):
             model.train()
 
+            print("Quantidade de amostras no datase: " + str(len(data_loader)))
             if (step - 1) % len(data_loader) == 0:
                 data_loader = iter(train_loader)
 
             # input: [T, W, H, C]
             input = next(data_loader)
+            # Attention! This works only when batch_size = 1
+            folder_index = input[1][0]
+            sample_index = input[2][0]
+            input = input[0]
+
             input = np.squeeze(input)
-            
+
             # Returns [T-1, obj1, obj2], beeing obj1 the num object detected in the first frame and obj2 in the second frame
             # [] if a frame does not have objects
-            adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input)
+            
+            adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
             SIMILARITY_THRESHOLD = 0.65#0.73
-            graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+            graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
             # If in the first frame there is no object detected, so we have nothing to do here
             # The number of detected objects may be less than N. In this case we have nothing to do here
@@ -161,7 +168,7 @@ def train(save_folder):
             #    continue       # Continue
 
             #data, object_path = calculeTarget(adj_mat, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
-            data, object_path = calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+            data, object_path = calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
             if data == -1:
                 print("Continuing because there aren't a object in the first frame ")
                 continue
