@@ -24,6 +24,8 @@ from tqdm import tqdm
 import torch.optim as optim
 import objectDetector
 import os
+from definitions import ROOT_DIR, FRAMES_DIR, DATASET_DIR
+
 import csv
 
 import modelPretext
@@ -56,7 +58,7 @@ LR = float(config['PARAMS']['LR'])                                    # Learning
 OBJECT_FEATURE_SIZE = int(config['PARAMS']['OBJECT_FEATURE_SIZE'])  # OBJECT_FEATURE_SIZE
 SIMILARITY_THRESHOLD = float(config['PARAMS']['SIMILARITY_THRESHOLD'])
 
-GT_PATH = "/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/files/gt-camnuvem.npy"
+GT_PATH = os.path.join(ROOT_DIR, '../')
 
 # Allow only 1 (person) 2 (bicycle) 3 (car) 4 (motorcycle)
 OBJECTS_ALLOWED = [1,2,3,4]    # COCO categories ID allowed. The othwers will be discarded
@@ -64,8 +66,8 @@ OBJECTS_ALLOWED = [1,2,3,4]    # COCO categories ID allowed. The othwers will be
 FEA_DIM_IN = 0
 FEA_DIM_OUT = 0
 
-OUTPUT_PATH_PRETEXT_TASK = "/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/graph_detector/results/pretext_task"
-OUTPUT_PATH_DOWNSTREAM_TASK = "/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/graph_detector/results/downstream_task"
+OUTPUT_PATH_PRETEXT_TASK = os.path.join(ROOT_DIR, "results/pretext_task")
+OUTPUT_PATH_DOWNSTREAM_TASK = os.path.join(ROOT_DIR, "results/downstream_task")
 MODEL_NAME = "model"
 
 # Exemplo de como trabalhar com hook: https://discuss.pytorch.org/t/how-can-l-load-my-best-model-as-a-feature-extractor-evaluator/17254/5
@@ -100,12 +102,12 @@ def train(save_folder):
     batch_size = 1              # Aumentar no final
     max_sample_duration = 200   # Limitando as amostras por no máximo 200 arquivos.png
     # each video is a folder number-nammed
-    training_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/training"
+    training_folder = os.path.join(FRAMES_DIR, "training")
     train_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, training_folder, max_sample_duration),
                                    batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)   
 
-    test_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/test"
+    test_folder = os.path.join(FRAMES_DIR, "test")
     test_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, test_folder, max_sample_duration, test=True),
                                    batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)   
@@ -264,10 +266,10 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     print("Carregando o checkpoint ")
     print(pretext_checkpoint)
 
-    RANDOM_WEIGHTS = 1
-    if RANDOM_WEIGHTS == 1:
-        print("ATENÇÃO, VC ESTÁ CARREGANDO UM PRETEXT MODEL RANDOMIZADO")
-        pretext_checkpoint = "/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/graph_detector/results/pretext_task/t=5-n=5-lr=5e-05-st=0.7_RANDOM_WEIGHTS/model_random_weights.pkl"
+    #RANDOM_WEIGHTS =0
+    #if RANDOM_WEIGHTS == 1:
+    #    print("ATENÇÃO, VC ESTÁ CARREGANDO UM PRETEXT MODEL RANDOMIZADO")
+    #    pretext_checkpoint = os.path.join(ROOT_DIR, "results/pretext_task/t=5-n=5-lr=5e-05-st=0.7_RANDOM_WEIGHTS/model_random_weights.pkl")
 
     model_pt = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT)
     model_pt.load_state_dict(torch.load(pretext_checkpoint))
@@ -295,7 +297,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     abnormal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, normal = False, test=False), batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)
 
-    list_ = "/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/files/graph_detector_test_05s.list"
+    list_ = os.path.join(ROOT_DIR, "../", "files/graph_detector_test_05s.list")
     test_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, list_=list_, normal = True, test=True), batch_size=1, shuffle=False,
                                    num_workers=0, pin_memory=False)
 
@@ -428,7 +430,7 @@ def runDownstream():
                 N_DOWNSTRAM = n
                 pretext_folder_sufix = "t="+str(t)+"-n="+str(n)+"-lr="+str(LR)+"-st="+str(st)
                 pretext_folder = os.path.join(OUTPUT_PATH_PRETEXT_TASK, pretext_folder_sufix)                    
-                pretext_checkpoint = os.path.join(pretext_folder, find_value(pretext_folder))
+                pretext_checkpoint = os.path.join(pretext_folder, find_value(pretext_folder))          
                 
                 downstream_folder = os.path.join(OUTPUT_PATH_DOWNSTREAM_TASK, pretext_folder_sufix)
                 try:
@@ -443,11 +445,12 @@ def runDownstream():
 
 def find_value(dir):
 
-    return ''
+    #return ''
     score = []
     files = []
     # Find all files with model*.txt in the 'dir' folder
-    for file in os.listdir(dir):    
+    print(dir)
+    for file in os.listdir(dir):
         if 'model' in file and file.endswith(".txt"):
             number = file[5:][:-4]
             files.append(int(number))
@@ -460,9 +463,9 @@ def find_value(dir):
 if __name__ == '__main__':
 
     # Search training parameter
-    run()
+    #run()
     #downstreamTask()
-    #runDownstream()
+    runDownstream()
 
 
 

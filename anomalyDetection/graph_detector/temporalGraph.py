@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from definitions import ROOT_DIR, FRAMES_DIR, DATASET_DIR
 
 import torch
 import torchvision
@@ -11,9 +12,9 @@ from utils import fileLines2List
 import PIL
 import random
 import time
+import definitions
 
 import cv2
-
 
 class TemporalGraph:
 	def __init__(self, device, buffer_size, OBJECTS_ALLOWED, N, STRIDE):
@@ -22,10 +23,10 @@ class TemporalGraph:
 		object_detector = objectDetector.ObjectDetector(device)
 		self.model = object_detector.getModel()
 		self.OBJECT_DETECTION_THESHOLD = 0.55
-		self.path_training_normal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/normal"		
-		self.path_training_abnormal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/anomaly"				
-		self.path_test_normal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/test/normal"				
-		self.path_test_abnormal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/test/anomaly"				
+		#self.path_training_normal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/normal"		
+		#self.path_training_abnormal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/anomaly"				
+		#self.path_test_normal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/test/normal"				
+		#self.path_test_abnormal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/test/anomaly"				
 		self.N = N 			# For each frame, we will consider the top N scores objects
 		self.STRIDE = STRIDE
 		self.buffer_size = buffer_size

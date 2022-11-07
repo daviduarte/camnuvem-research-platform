@@ -9,6 +9,7 @@ import temporalGraph
 import os
 import cv2
 import math
+from definitions import DATASET_DIR
 
 def getFrameQtd(frame_folder_path):
     video_path = frame_folder_path.replace('CamNuvem_dataset_normalizado_frames_05s', 'CamNuvem_dataset_normalizado/videos/samples')
@@ -22,16 +23,14 @@ def getFrameQtd(frame_folder_path):
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
 def getLabels(labels, list_test):
 
-
     # Colocar isso no config.ini depois
     # TODO
-    test_normal_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/test/normal"
-    test_anomaly_folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/test/anomaly"
+    test_normal_folder = os.path.join(DATASET_DIR, "videos/samples/test/normal")
+    test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
 
     with open(labels) as file:
         lines = file.readlines()
     qtd_anomaly_files = len(lines)
-
 
     gt = []
     qtd_total_frame = 0
@@ -107,16 +106,10 @@ def getLabels(labels, list_test):
         frame_label = np.zeros(frame_qtd)   # All frames here are normal.
         
         gt.append([video_path, frame_label])
-
-
-
+        
     print("Qtd total de frame: ")
     print(qtd_total_frame)
     return gt
-
-
-
-
 
 def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, STRIDE_TEST, device, ten_crop, gt_path, OBJECTS_ALLOWED, N, T, EXIT_TOKEN, only_abnormal = False):
 
@@ -124,7 +117,7 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, STRIDE
 
     # Receber isso por parâmetro
     NUM_SAMPLE_FRAME = 15
-    LABELS_PATH = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/labels/test.txt"
+    LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
 
     gt = []
