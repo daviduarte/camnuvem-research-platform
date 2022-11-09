@@ -253,8 +253,6 @@ def run():
             train(save_folder)
 
 
-
-
 def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_checkpoint, downstream_folder):
     #global FEA_DIM_OUT, FEA_DIM_OUT
 
@@ -288,7 +286,6 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     model = modelDownstream.ModelDownstream(128).to(DEVICE)
 
     LR_DOWNSTREAM = 0.00005
-
     
     max_sample_duration = 300
     normal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, normal = True, test=False), batch_size=batch_size, shuffle=False,
@@ -312,7 +309,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     test_log.write(str(auc) + " ")
     test_log.flush()
     best_auc = auc
-
+    torch.save(model.state_dict(), os.path.join(downstream_folder, MODEL_NAME + '{}.pkl'.format(step)))                    
 
     normal_loader = iter(normal_dataset)    
     abnormal_loader = iter(abnormal_dataset)    
@@ -386,6 +383,8 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
                 if auc < best_auc:
                     # Save model 
                     torch.save(model.state_dict(), os.path.join(downstream_folder, MODEL_NAME + '{}.pkl'.format(step)))                    
+                    print("Saving model at")
+                    print(os.path.join(downstream_folder, MODEL_NAME + '{}.pkl'.format(step)))
                     fo = open(os.path.join(downstream_folder, MODEL_NAME + '{}.txt'.format(step)), "w")
                     fo.write("Test loss: " + str(auc))
                     fo.close()     

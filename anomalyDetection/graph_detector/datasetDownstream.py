@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 import os
 import cv2
 import random
+from definitions import FRAMES_DIR
 
 
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -33,9 +34,9 @@ class DatasetDownstream(data.Dataset):
 
         if self.test == False:
             if self.normal == True:
-                self.folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/training/normal"
+                self.folder = os.path.join(FRAMES_DIR, "training/normal")
             else:
-                self.folder = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/training/anomaly"
+                self.folder = os.path.join(FRAMES_DIR, "training/anomaly")
         else:            
             assert(list_ != None)
             # If we are in test, we do not need the self.folder, we have a .txt containing all files we need in order
