@@ -119,6 +119,8 @@ class DatasetDownstream(data.Dataset):
         cont = 0
         for frame_folder_path in path:
 
+            frame_folder_path = os.path.join(FRAMES_DIR, frame_folder_path)
+
             if os.path.isdir(frame_folder_path):
                 self.frame_folders['list'].append(frame_folder_path)
                 num = self.calcule_sample_num(frame_folder_path)
@@ -141,10 +143,14 @@ class DatasetDownstream(data.Dataset):
         self.frame_folders['qtd_total_frame'] = []
         self.frame_folders['id'] = []
 
+
         if self.test == False:
             self.sample_qtd = self.parse()
         else:
             self.sample_qtd = self.parse_test()
+        print("qtd de amostras: ")       
+        print(self.frame_folders['sample_num'])
+
 
         
     def getImage(self, index):
@@ -175,6 +181,7 @@ class DatasetDownstream(data.Dataset):
             # Read the 'self.T' frames that compose the sample
             
             pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
+            print(pathSample)
 
             img = cv2.imread(pathSample)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
@@ -200,6 +207,8 @@ class DatasetDownstream(data.Dataset):
         index = index+1         # Png frame files start at 1
 
         sample, folder_index, sample_index = self.getImage(index)
+
+        print(folder_index)
 
         sample = sample.astype('float32')
 

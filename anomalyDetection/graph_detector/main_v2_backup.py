@@ -295,6 +295,8 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
                                    num_workers=0, pin_memory=False)
 
     list_ = os.path.join(ROOT_DIR, "../", "files/graph_detector_test_05s.list")
+    print("listy")
+    print(list_)
     test_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, list_=list_, normal = True, test=True), batch_size=1, shuffle=False,
                                    num_workers=0, pin_memory=False)
 
