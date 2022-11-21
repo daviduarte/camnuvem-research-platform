@@ -9,7 +9,8 @@ def test(dataloader, model, args, viz, device, gt, only_abnormal = False):
         model.eval()
         pred = torch.zeros(0)
         pred = pred.cpu().detach()
-
+        device = 'cpu'
+        model.device = 'cpu'
         cont = 0
 
         for i, input in enumerate(dataloader):
@@ -26,14 +27,23 @@ def test(dataloader, model, args, viz, device, gt, only_abnormal = False):
             score_abnormal, score_normal, feat_select_abn, feat_select_normal, feat_abn_bottom, feat_select_normal_bottom, logits, \
             scores_nor_bottom, scores_nor_abn_bag, feat_magnitudes = model(inputs=input)
             
-            #print(logits)
+            print(logits)
             #exit()
             logits = torch.squeeze(logits, 1)
             logits = torch.mean(logits, 0)
 
             sig = logits
             sig = sig.cpu().detach()
+            #print(sig)
             pred = torch.cat((pred, sig))
+
+
+            print("Preeed")
+            print(pred)
+
+            with open("vis/"+str(cont)+".txt", 'w') as file:
+                for i in pred:
+                    file.write(str(i)+"")            
 
             #print("Shape do logit: ")
             #print(logits.shape)
@@ -48,7 +58,7 @@ def test(dataloader, model, args, viz, device, gt, only_abnormal = False):
         #exit()
 
         #if args.dataset == 'shanghai':
-        print(gt)
+        #print(gt)
         gt = np.load(gt)
         #elif args.dataset == 'camnuvem':
         #print("Carregando o gt da camnuvem")
@@ -68,18 +78,18 @@ def test(dataloader, model, args, viz, device, gt, only_abnormal = False):
         pred = list(pred.cpu().detach().numpy())
         pred = np.repeat(np.array(pred), args.segment_size)
 
-
+        print(pred)
         #print("td do pred: ")
         #print(pred.shape)
 
         fpr, tpr, threshold = roc_curve(list(gt), pred)
 
         if only_abnormal:            
-            np.save('fpr_rtfm_only_abnormal_10c.npy', fpr)
-            np.save('tpr_rtfm_only_abnormal_10c.npy', tpr)
+            np.save('fpr_rtfm_only_abnormal_ucf_10c.npy', fpr)
+            np.save('tpr_rtfm_only_abnormal_ucf_10c.npy', tpr)
         else:
-            np.save('fpr_rtfm_10c.npy', fpr)
-            np.save('tpr_rtfm_10c.npy', tpr)
+            np.save('fpr_rtfm_ucf_10c.npy', fpr)
+            np.save('tpr_rtfm_ucf_10c.npy', tpr)
 
         rec_auc = auc(fpr, tpr)
         print('auc : ' + str(rec_auc))
@@ -96,5 +106,10 @@ def test(dataloader, model, args, viz, device, gt, only_abnormal = False):
         viz.plot_lines('auc', rec_auc)
         viz.lines('scores', pred)
         viz.lines('roc', tpr, fpr)
+
+        #device = 'cuda:0'
+        #model.device = 'cuda:0'
+        #model.to(device)
+
         return rec_auc
 

@@ -1,6 +1,10 @@
 import visdom
 import numpy as np
 import torch
+import sys
+
+
+
 
 class Visualizer(object):
     def __init__(self, env='default', **kwargs):

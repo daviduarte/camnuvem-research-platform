@@ -5,6 +5,8 @@ import numpy as np
 import os
 import torch 
 import h5py
+from sklearn.preprocessing import normalize
+
 
 from random import randint
 
@@ -82,6 +84,8 @@ class dataset_h5(torch.utils.data.Dataset):
         # Gambiarra apenas para testes. Vamos modelar os dados adequadamente
         #tmp = tmp[0:32:,0,0:1024]
 
+        #tmp = normalize(tmp, axis=1)
+        #torch.nn.functional.normalize(torch.from_numpy(tmp), dim=1)
         # Mesmo método feito pelo RTFM
         if self.ten_crop:
             tmp = np.transpose(tmp, axes=(1, 0, 2))  # gives a [10, B, F] tensor
@@ -123,6 +127,9 @@ class dataset_h5(torch.utils.data.Dataset):
         tmp = self.file[nvid]
         # Gambiarra apenas para testes. Vamos modelar os dados adequadamente
         #tmp = tmp[0:32:,0,0:1024]        
+
+
+        #tmp = normalize(tmp, axis=1)
         if self.ten_crop:
             tmp = np.transpose(tmp, axes=(1, 0, 2))  # gives a [10, B, F] tensor
             divided_features = []
@@ -150,8 +157,10 @@ class dataset_h5(torch.utils.data.Dataset):
 
             preds.append(0)
 
+
         ano_feas = torch.from_numpy(ano_fea)
         nor_feas = torch.from_numpy(nor_fea)
+    
 
         preds = torch.Tensor(preds)
 
@@ -171,7 +180,7 @@ class dataset_h5_test(torch.utils.data.Dataset):
         self.__vid__=[]
 
         if self.only_anomaly == True:
-            videos = videos[0:49]
+            videos = videos[0:140]
         print(len(videos))
 
 
@@ -185,6 +194,7 @@ class dataset_h5_test(torch.utils.data.Dataset):
                 self.__vid__.append("anomaly_"+v.strip().split('/')[-1][:-4])
 
             #self.__vid__.append(v.strip().split('/')[-1].split(' ')[0])
+        print(in_file)
         self.file = h5py.File(in_file, 'r')
 
         #print(self.file.keys())
@@ -199,6 +209,8 @@ class dataset_h5_test(torch.utils.data.Dataset):
         feas = []
         preds = []
         from sklearn.preprocessing import Normalizer
+        print(vid)
+        print(self.file)
         tmp = self.file[vid]
         #tmp = tmp[:,:, 0:1024]   
         #tmp = tmp[0:32,0, 0:1024]  
@@ -228,6 +240,7 @@ class dataset_h5_test(torch.utils.data.Dataset):
             
         """
         ano_fea = np.asarray(tmp)
+        #ano_fea = normalize(ano_fea, axis=1)
         #print("Shape do input depois da normalizacao: ")
         #print(ano_fea.shape)
         # if 'Explosion010_x264' in vid:

@@ -40,8 +40,6 @@ def train(args):
                               batch_size=1, shuffle=False,
                               num_workers=0, pin_memory=False)    
 
-    
-
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     device = torch.device(args.gpu_id)
     model = Model(args.feature_size, args.batch_size, args.crop_10, device)
@@ -55,19 +53,22 @@ def train(args):
         
         print("Carregando o checkpoint")
         print(args.checkpoint)
-        model.load_state_dict(torch.load(args.checkpoint))
+        model.load_state_dict(torch.load(args.checkpoint, map_location='cuda:0'))
 
         # Test
-        auc = test(test_loader, model, args, viz, device, args.gt)
+        auc1 = test(test_loader, model, args, viz, device, args.gt)
 
         # Test now with only the anomaly videos
-        auc = test(test_loader_only_anomaly, model, args, viz, device, args.gt_only_anomaly, only_abnormal=True)
+        auc2 = test(test_loader_only_anomaly, model, args, viz, device, args.gt_only_anomaly, only_abnormal=True)
+
+        print("auc1: ")
+        print(auc1)
+        print(auc2)
 
         exit()
 
     for name, value in model.named_parameters():
         print(name)
-
 
     if not os.path.exists('./ckpt'):
         os.makedirs('./ckpt')
@@ -76,7 +77,7 @@ def train(args):
     time.sleep(1)
 
     optimizer = optim.Adam(model.parameters(),
-                            lr=0.001, weight_decay=0.005)
+                            lr=0.001, eps=1e-3, weight_decay=0.005)
 
     test_info = {"epoch": [], "test_AUC": []}
     best_AUC = -1
@@ -107,7 +108,7 @@ def train(args):
         contzera += 1
         if step % 5 == 0 and step > 10:
 
-            auc = test(test_loader, model, args, viz, device)
+            auc = test(test_loader, model, args, viz, device, args.gt)
             test_info["epoch"].append(step)
             test_info["test_AUC"].append(auc)
 
@@ -116,9 +117,6 @@ def train(args):
                 torch.save(model.state_dict(), os.path.join(output_path, args.model_name + '{}-i3d.pkl'.format(step)))
                 save_best_record(test_info, os.path.join(output_path, '{}-step-AUC.txt'.format(step)))
     torch.save(model.state_dict(), os.path.join(output_path, args.model_name + 'final.pkl'))
-
-
-
 
 if __name__ == '__main__':
 

@@ -1,23 +1,24 @@
 # Sultani sampled every 16 pixels. RTFM feature size is 2048, hile WSAL is 1024
-python3 run.py --no-feature-extraction=False --make-list-file=False --segment-size=16 \
---feature-root-train-abnormal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/i3d/training/anomaly/ \
---feature-root-train-normal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/i3d/training/normal/ \
---feature-root-test-abnormal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/i3d/test/anomaly/ \
---feature-root-test-normal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/i3d/test/normal/ \
+python3 run.py --no-feature-extraction=False --make-list-file=True --segment-size=16 \
+--feature-root-train-abnormal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/ucf_crime_dataset/i3d_10crop/training/anomaly/ \
+--feature-root-train-normal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/ucf_crime_dataset/i3d_10crop/training/normal/ \
+--feature-root-test-abnormal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/ucf_crime_dataset/i3d_10crop/test/anomaly/ \
+--feature-root-test-normal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/ucf_crime_dataset/i3d_10crop/test/normal/ \
 --make-gt=False \
 --test-labels=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/labels/test.txt \
---video-root-train-normal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/training/normal \
---video-root-test-normal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/test/normal \
---video-root-train-abnormal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/training/anomaly \
---video-root-test-abnormal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/test/anomaly \
+--video-root-train-normal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/ucf_crime_dataset/videos/samples/training/normal \
+--video-root-test-normal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/ucf_crime_dataset/videos/samples/test/normal \
+--video-root-train-abnormal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/ucf_crime_dataset/videos/samples/training/anomaly \
+--video-root-test-abnormal=/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/ucf_crime_dataset/videos/samples/test/anomaly \
 --gt=/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/RTFM/list/gt-camnuvem.npy \
 --re-run-test=False \
 --checkpoint=/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/RTFM/ckpt/rtfm155-i3d_best_camnuvem_dataset_producao.pkl \
 --root=/media/denis/526E10CC6E10AAAD/CamNuvem \
 --make-hd5-file=False \
---crop-10=False \
---feature-extractor=c3d
-
+--crop-10=True \
+--feature-extractor=i3d \
+--replace=False \
+--gpu-id=cuda:0
 
 
 

@@ -45,7 +45,7 @@ class Dataset(data.Dataset):
 
         # If we want test only in anomaly videos
         if self.test_mode is True and self.only_anomaly is True:
-            self.list = self.list[0:49]  # The anomaly videos is 0 to 49
+            self.list = self.list[0:140]  # The anomaly videos is 0 to 49
 
             return
 
@@ -75,11 +75,11 @@ class Dataset(data.Dataset):
             elif self.dataset == 'camnuvem'                    :
             """
             if self.is_normal:
-                self.list = self.list[433:]
+                self.list = self.list[810:]
                 #print('normal list for CamNuvem')
                 #print(self.list)
             else:
-                self.list = self.list[:433]
+                self.list = self.list[:810]
                 #print('abnormal list for CamNuvem')
                 #print(self.list)                    
 
@@ -89,11 +89,15 @@ class Dataset(data.Dataset):
         features = np.load(self.list[index].strip('\n'), allow_pickle=True)
         features = np.array(features, dtype=np.float32)
 
+        
+
+
         #print(features.shape)
         if self.args.crop_10 == "False":
 
             # Add a dummy dimension to simulate the 10 crop
             features = features[:, None, :]
+        features = torch.nn.functional.normalize(torch.from_numpy(features), dim=2).numpy()
 
         if self.tranform is not None:
             features = self.tranform(features)

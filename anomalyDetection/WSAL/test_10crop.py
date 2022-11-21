@@ -94,6 +94,7 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
             print("Shape da predicao depois dos paranaue: ")
             print(ano_score_.shape)
 
+
             pred_ = torch.cat((pred_, ano_score_))
 
             #input = input.to(device)
@@ -141,11 +142,11 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
 
         fpr, tpr, threshold = roc_curve(list(gt), pred)
         if only_abnormal:            
-            np.save('fpr_wsal_only_abnormal_10c.npy', fpr)
-            np.save('tpr_wsal_only_abnormal_10c.npy', tpr)
+            np.save('fpr_wsal_only_abnormal_ucf_10c.npy', fpr)
+            np.save('tpr_wsal_only_abnormal_ucf_10c.npy', tpr)
         else:
-            np.save('fpr_wsal_10c.npy', fpr)
-            np.save('tpr_wsal_10c.npy', tpr)
+            np.save('fpr_wsal_ucf_10c.npy', fpr)
+            np.save('tpr_wsal_ucf_10c.npy', tpr)
 
         rec_auc = auc(fpr, tpr)
         print('auc : ' + str(rec_auc))

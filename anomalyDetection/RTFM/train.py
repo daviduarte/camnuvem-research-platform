@@ -137,6 +137,8 @@ class RTFM_loss(torch.nn.Module):
 def train(nloader, aloader, model, batch_size, optimizer, viz, device, contzera):
     with torch.set_grad_enabled(True):
         model.train()
+        model.to(device)
+        model.device = device
 
         ninput, nlabel = next(nloader)
         ainput, alabel = next(aloader)

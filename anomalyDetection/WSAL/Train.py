@@ -31,6 +31,7 @@ viz = Visualizer(env='WSAL i3d 10crop', use_incoming_socket=False)
 
 
 def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_test, gt, segment_size, root, ten_crop, gpu_id, checkpoint, gt_only_anomaly):
+    print("********************************")
     torch.cuda.empty_cache()
 
     ver ='WSAL'
@@ -69,13 +70,17 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
     print("mano")
 
     if checkpoint != "False":    
-        checkpoint = torch.load(checkpoint)
+        checkpoint = torch.load(checkpoint, map_location='cuda:0')
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
-        auc = test(test_loader, model, args, viz, device, ten_crop, gt)
+        print("********************************88")
+        auc1 = test(test_loader, model, args, viz, device, ten_crop, gt)
 
-        auc = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
+        auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
         
+        print("Auc onmly obnomral? ")
+        print(auc2)
+        print(auc1)
         exit()
 
     criterion = torch.nn.CrossEntropyLoss(reduction = 'none')
