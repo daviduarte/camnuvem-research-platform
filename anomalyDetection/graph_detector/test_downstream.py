@@ -107,8 +107,6 @@ def getLabels(labels, list_test):
         
         gt.append([video_path, frame_label])
         
-    print("Qtd total de frame: ")
-    print(qtd_total_frame)
     return gt
 
 def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, STRIDE_TEST, device, ten_crop, gt_path, OBJECTS_ALLOWED, N, T, EXIT_TOKEN, only_abnormal = False):
@@ -118,6 +116,7 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, STRIDE
     # Receber isso por parâmetro
     NUM_SAMPLE_FRAME = 15
     LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
+
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
 
     gt = []

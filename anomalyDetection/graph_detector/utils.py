@@ -120,7 +120,7 @@ def calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, o
     if object_path[-1] == -1:
         target = torch.zeros(EXIT_TOKEN)
     else:
-        target_index = object_path[-1]    
+        target_index = object_path[-1]
 
         object_in_the_last_frame = bbox_fea_list[-1][1][target_index]        # Last element, objects from last image, object num. 'obj_predicted'
         object_in_the_last_frame_box = box_list[-1][1][target_index]         # a 4 element list
@@ -207,7 +207,6 @@ def add_objects(frame, T, N, score_list, objects_already_tracked):
             break            
 
     return list_
-
 
 # Calcule the object path of all objects detected in every windows frame. 
 def calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):

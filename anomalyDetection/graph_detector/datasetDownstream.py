@@ -208,8 +208,6 @@ class DatasetDownstream(data.Dataset):
 
         sample, folder_index, sample_index = self.getImage(index)
 
-        print(folder_index)
-
         sample = sample.astype('float32')
 
 

@@ -253,7 +253,7 @@ def run():
             train(save_folder)
 
 
-def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_checkpoint, downstream_folder):
+def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_checkpoint, downstream_folder, checkpoint):
     #global FEA_DIM_OUT, FEA_DIM_OUT
 
     EXIT_TOKEN = FEA_DIM_OUT
@@ -304,19 +304,31 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     optimizer = optim.Adam(model.parameters(),
                             lr=LR_DOWNSTREAM, weight_decay=0.005)
 
-
-    # TODO: BETTER WAY TO PROPAGATE THE STRIDE TO DATASETDOWNSTREAM
-    STRIDE_TEST = 1     #
-    auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, STRIDE_TEST, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
-    test_log.write(str(auc) + " ")
-    test_log.flush()
-    best_auc = auc
-    torch.save(model.state_dict(), os.path.join(downstream_folder, MODEL_NAME + '{}.pkl'.format(step)))                    
+    if checkpoint is not False:
+        # If we are loading a pre-trained model, we don't need retest it in the start
+        print("Continuando o treinamento do modelo: ")
+        model.load_state_dict(torch.load(checkpoint))
+        start_epoch = int(checkpoint.split('model')[1].split('.pkl')[0]) + 1
+        print("Começando de " + str(start_epoch))
+    else:
+        # TODO: BETTER WAY TO PROPAGATE THE STRIDE TO DATASETDOWNSTREAM
+        print("Comançando o treinamento do zero")
+        STRIDE_TEST = 1     #
+        auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, STRIDE_TEST, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
+        test_log.write(str(auc) + " ")
+        test_log.flush()
+        best_auc = auc
+        step = 0
+        torch.save(model.state_dict(), os.path.join(downstream_folder, MODEL_NAME + '{}.pkl'.format(step)))                    
+        fo = open(os.path.join(downstream_folder, MODEL_NAME + '{}.txt'.format(step)), "w")
+        fo.write("Test loss: " + str(best_auc))
+        fo.close()     
+        start_epoch = 1
 
     normal_loader = iter(normal_dataset)    
     abnormal_loader = iter(abnormal_dataset)    
     for step in tqdm(
-            range(1, MAX_EPOCH + 1),
+            range(start_epoch, MAX_EPOCH + 1),
             total=MAX_EPOCH,
             dynamic_ncols=True
     ):    
@@ -333,34 +345,22 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
             # [[sample, label, folder_index, sample_index] ...]
             input_normal = next(normal_loader)
-            #print(len(input_normal))
-            #print(input_normal[0].shape)
-            #print(input_normal[1].shape)
-            #print(input_normal[2].shape)
-            #print(input_normal[3].shape)
-            #exit()
-            #input_normal = np.squeeze(input_normal)
-            #input_normal = torch.squeeze(input_normal)
 
             input_abnormal = next(abnormal_loader)
-            #input_abnormal = np.squeeze(input_abnormal)
-            #input_abnormal = torch.squeeze(input_abnormal)
-            
-            batch_list = utils.batch_processing(input_abnormal, input_normal, temporal_graph_normal, temporal_graph_abnormal, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
+            batch_list = utils.batch_processing(input_abnormal, input_normal, temporal_graph_normal, temporal_graph_abnormal, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
             input_abnormal = [i[0] for i in batch_list]
             input_normal = [i[1] for i in batch_list]
 
             if len(input_abnormal) == 0 or len(input_normal) == 0:
-                print("Nenhuma amostra possui objetos no primeiro frame")
+                print("Alguma amostra possui objetos no primeiro frame")
                 continue
 
             input_abnormal = torch.stack(input_abnormal)
             input_normal = torch.stack(input_normal)
 
             abnormal_res = model(prunned_model_pt(input_abnormal))
-
             normal_res = model(prunned_model_pt(input_normal))
 
             downstramLoss = losses.DownstramLoss(normal_res, abnormal_res)
@@ -382,7 +382,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
                 test_log.write(str(auc) + " ")
                 test_log.flush()
 
-                if auc < best_auc:
+                if auc > best_auc:
                     # Save model 
                     torch.save(model.state_dict(), os.path.join(downstream_folder, MODEL_NAME + '{}.pkl'.format(step)))                    
                     print("Saving model at")
@@ -395,6 +395,9 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     trining_log.close()
 
 def runDownstream():
+
+    #checkpoint = False
+    checkpoint = os.path.join(ROOT_DIR, "results/downstream_task/t=5-n=5-lr=5e-05-st=0.7/model72.pkl")
 
     config = configparser.ConfigParser(allow_no_value=True)
     config.sections()
@@ -434,14 +437,21 @@ def runDownstream():
                 pretext_checkpoint = os.path.join(pretext_folder, find_value(pretext_folder))          
                 
                 downstream_folder = os.path.join(OUTPUT_PATH_DOWNSTREAM_TASK, pretext_folder_sufix)
-                try:
-                    os.mkdir(downstream_folder)
-                except OSError as error:
-                    print("Erro ao criar dir: ")
-                    print(error)    
-                    continue
+                #if we are continuing a training
+                if checkpoint is not False:
+                    print("Continuando o treinamento do modelo: ")
+                    # Verify if the checkpoint is in the same folder than  downstream_folder
+                    assert(os.path.dirname(checkpoint) == downstream_folder)
+                else:
+
+                    try:
+                        os.mkdir(downstream_folder)
+                    except OSError as error:
+                        print("Erro ao criar dir: ")
+                        print(error)    
+                        continue
                 
-                downstreamTask(t, n, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_checkpoint, downstream_folder)
+                downstreamTask(t, n, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_checkpoint, downstream_folder, checkpoint)
 
 
 def find_value(dir):
