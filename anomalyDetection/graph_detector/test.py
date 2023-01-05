@@ -1,9 +1,9 @@
 import torch
-import utils
+import util.utils as utils
 import temporalGraph
 import numpy as np
-
-
+from definitions import FRAMES_DIR
+import os
 
 def test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE):    
     print("Testing")
@@ -22,21 +22,43 @@ def test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_s
             input = input[0]            
             input = np.squeeze(input)
 
+            print("CARAIOOOO")
+            print(folder_index.cpu().numpy())
+            print(sample_index.cpu().numpy())
 
 
-            adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
+            cache_folder = "cache_pt_task/test/T="+str(T)+"-N="+str(N)+"/"
+            data_path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()), str(sample_index.cpu().numpy())+"_data.npy")
+            print(data_path)
+            has_cache = False
+            if os.path.exists(data_path):
+                has_cache = True
+                test_loader.has_cache = True
+            else:
+                has_cache = False
+                
+            if not has_cache:
+                adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
 
-            SIMILARITY_THRESHOLD = 0.65#0.73
-            graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+                SIMILARITY_THRESHOLD = 0.65#0.73
+                graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, SIMILARITY_THRESHOLD, T, N)
 
 
-            # If in the first frame there is no object detected, so we have nothing to do here
-            # The number of detected objects may be less than N. In this case we have nothing to do here
-            #if len(bbox_fea_list[reference_frame][obj_predicted]) < N:
-            #    print("continuando")
-            #    continue       # Continue
+                # If in the first frame there is no object detected, so we have nothing to do here
+                # The number of detected objects may be less than N. In this case we have nothing to do here
+                #if len(bbox_fea_list[reference_frame][obj_predicted]) < N:
+                #    print("continuando")
+                #    continue       # Continue
 
-            data, object_path = utils.calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+                data, object_path = utils.calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+
+                path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()))
+                os.makedirs(path, exist_ok=True)
+                np.save(data_path, data)
+            else:                
+                print("Ok, temos cache, vamos carregar")
+                data = np.load(data_path, allow_pickle=True)
+
             if data == -1:
                 print("Continuing because there aren't a object in the first frame ")
                 continue

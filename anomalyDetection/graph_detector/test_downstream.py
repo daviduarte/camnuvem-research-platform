@@ -4,12 +4,12 @@ from sklearn.metrics import auc, roc_curve, precision_recall_curve
 import numpy as np
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
-import utils
+import util.utils as utils
 import temporalGraph
 import os
 import cv2
 import math
-from definitions import DATASET_DIR
+from definitions import DATASET_DIR, FRAMES_DIR
 
 def getFrameQtd(frame_folder_path):
     video_path = frame_folder_path.replace('CamNuvem_dataset_normalizado_frames_05s', 'CamNuvem_dataset_normalizado/videos/samples')
@@ -183,15 +183,35 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, STRIDE
 
 
                 frames = torch.squeeze(input[0])
-                adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(frames, folder_index, sample_index)
 
-                SIMILARITY_THRESHOLD = 0.65#0.73
-                reference_frame = 0
-                obj_predicted = 0
-                graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+                cache_folder = "cache_ds_task/test/"
+                data_path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()[0]), str(sample_index.cpu().numpy()[0])+"_data.npy")
+                has_cache = False
+                if os.path.exists(data_path):
+                    has_cache = True
+                    dataloader.has_cache = True
+                else:
+                    has_cache = False
+
+                if not has_cache:
+                    adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(frames, folder_index, sample_index)
+
+                    SIMILARITY_THRESHOLD = 0.65#0.73
+                    reference_frame = 0
+                    obj_predicted = 0
+                    graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, SIMILARITY_THRESHOLD, T, N)
 
 
-                data, object_path = utils.calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+                    data, object_path = utils.calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, device, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+
+                    path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()[0]))
+                    os.makedirs(path, exist_ok=True)
+
+                    np.save(data_path, data)
+
+                else:
+
+                    data = np.load(data_path, allow_pickle=True)
 
                 if data == -1:
                     # TODO: WE DO NOT CAN CONSIDER AS NORMAL JUST BECAUSE THERE IS NO OBJECTS IN THE FIRST FRAME.

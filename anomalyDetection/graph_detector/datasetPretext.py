@@ -12,7 +12,8 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 class DatasetPretext(data.Dataset):
     #def __init__(self, args, is_normal=True, transform=None, test_mode=False, only_anomaly=False):
     def __init__(self, T, STRIDE, folder, max_sample_duration, test = False):
-            
+        
+        self.has_cache = False
         self.T = T              # Frame qtt in any sample
         self.stride = STRIDE #self.T    # stride of the sliding window
         self.folder = folder
@@ -103,18 +104,18 @@ class DatasetPretext(data.Dataset):
 
         # 'sample' is the sample index we are searching
         sample = []
-        label = []
-        for i in range(self.T):
-            # Read the 'self.T' frames that compose the sample
-            
-            pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
-            #pathLabel = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.adj.npy')
-            img = cv2.imread(pathSample)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
+        if not self.has_cache:
+            for i in range(self.T):
+                # Read the 'self.T' frames that compose the sample
+                
+                pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
+                #pathLabel = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.adj.npy')
+                img = cv2.imread(pathSample)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
 
-            sample.append(img)  
-        
-        sample = np.stack(sample, axis=0)
+                sample.append(img)  
+            
+            sample = np.stack(sample, axis=0)
 
         # Returns [T, H, W, C]
         return sample, folder_index, sample_index

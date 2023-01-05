@@ -1,18 +1,15 @@
 import numpy as np
 import os
-from definitions import ROOT_DIR, FRAMES_DIR, DATASET_DIR
-
 import torch
 import torchvision
 from torchvision import transforms, datasets
 from torchvision.utils import draw_bounding_boxes
 import string
 import objectDetector
-from utils import fileLines2List
+import util.utils as utils
 import PIL
 import random
 import time
-import definitions
 
 import cv2
 
@@ -21,7 +18,7 @@ class TemporalGraph:
 		self.DEVICE = device
 		self.OBJECTS_ALLOWED = np.asarray(OBJECTS_ALLOWED)
 		object_detector = objectDetector.ObjectDetector(device)
-		self.model = object_detector.getModel()
+		self.model = object_detector.getModel().to(self.DEVICE)
 		self.OBJECT_DETECTION_THESHOLD = 0.55
 		#self.path_training_normal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/normal"		
 		#self.path_training_abnormal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/anomaly"				
@@ -33,12 +30,11 @@ class TemporalGraph:
 		self.buffer = []	# [[folder_index, img_index], [boxes1, scores1, labels1, bbox_fea_vec1]]
 							#				ID             , 				CNN result
 
-
 	# Get only the top 'self.N' objects with better scores
 	def filterLowScores(self, prediction):
 
 		# read coco labels
-		str_labels = np.asarray(fileLines2List("coco_labels.txt"))
+		str_labels = np.asarray(utils.fileLines2List("../files/coco_labels.txt"))
 
 		scores = prediction[0]['scores'].cpu().detach().numpy()
 		boxes = prediction[0]['boxes'].cpu().detach().numpy()
@@ -187,7 +183,7 @@ class TemporalGraph:
 	def make_temporal_graph(self, pred1, pred2):
 
 		# read coco labels
-		str_labels = np.asarray(fileLines2List("coco_labels.txt"))
+		str_labels = np.asarray(utils.fileLines2List("../files/coco_labels.txt"))
 
 		scores1 = pred1[1]          # pred1[0]['scores'].cpu().detach().numpy()
 		boxes1 = pred1[0]           # pred1[0]['boxes'].cpu().detach().numpy()
@@ -264,7 +260,6 @@ class TemporalGraph:
 		vec1_ = torch.repeat_interleave(frame1_boxes, frame2_boxes.shape[0], dim=0)
 		vec2_ = frame2_boxes.repeat(frame1_boxes.shape[0], 1)
 
-
 		spacial_sim = cos(vec1_, vec2_)
 		#spacial_sim = torch.dist(vec1_, vec2_, p=2)
 		#spacial_sim = torch.cdist(vec1_, vec2_, p=2.0)
@@ -320,12 +315,17 @@ class TemporalGraph:
 
 		ma = []
 		num_img = images.shape[0]
+		print("num oimage")
+		print(num_img)
 		bbox_fea_list = []
 		box_list = []
 		score_list = []
 
 		for i in range(num_img-1):
 			img1, img2 = images[i], images[i+1]
+
+			print(img1.shape)
+			print(img2.shape)
 
 			# Verify if img1 exists in self.buffer
 			img_index = sample_index + i

@@ -3,6 +3,8 @@ import numpy as np
 import torch
 from torchvision.utils import draw_bounding_boxes
 import PIL
+from definitions import ROOT_DIR, FRAMES_DIR, DATASET_DIR
+import os
 
 class Visualizer(object):
     def __init__(self, env='default', **kwargs):
@@ -209,7 +211,7 @@ def add_objects(frame, T, N, score_list, objects_already_tracked):
     return list_
 
 # Calcule the object path of all objects detected in every windows frame. 
-def calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
+def calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, SIMILARITY_THRESHOLD, T, N):
 
     graph = []  # 3d adjacency matryx, objects through time
     next_object = []
@@ -337,7 +339,9 @@ def calculeObjectPath(graph, frame, obj_index):
     object_path = []
 
     print("calculando o path do objeto "+str(obj_index))
+    print(graph[frame:])
     for f in graph[frame:]:     # For each frame
+        print(f[obj_index])
         obj = f[obj_index]
 
         if obj == -1:
@@ -348,7 +352,7 @@ def calculeObjectPath(graph, frame, obj_index):
     return object_path
 
 
-def batch_processing(input_abnormal, input_normal, temporal_graph_normal, temporal_graph_abnormal, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
+def batch_processing(input_abnormal, input_normal, temporal_graph_normal, temporal_graph_abnormal, normal_loader, abnormal_loader, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N):
 
     # In the end of the dataset, the dataloader can supply samples with differents sizes in the shape[0]. So, m
     # We need work with the lower one
@@ -366,21 +370,44 @@ def batch_processing(input_abnormal, input_normal, temporal_graph_normal, tempor
         input_abnormal_sample_index = input_abnormal[3][i]
         input_abnormal_ = input_abnormal[0][i]
 
-        adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor = temporal_graph_normal.frames2temporalGraph(input_normal_, input_normal_folder_index, input_normal_sample_index)
-        adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn = temporal_graph_abnormal.frames2temporalGraph(input_abnormal_, input_abnormal_folder_index, input_abnormal_sample_index)
+        cache_folder = "cache_ds_task/training/"
+        data_nor_path = os.path.join(FRAMES_DIR, cache_folder, str(input_normal_folder_index.cpu().numpy()), str(input_normal_sample_index.cpu().numpy())+"_data_nor.npy")
+        data_abn_path = os.path.join(FRAMES_DIR, cache_folder, str(input_normal_folder_index.cpu().numpy()), str(input_normal_sample_index.cpu().numpy())+"_data_abn.npy")
+        has_cache = False
+        if os.path.exists(data_nor_path) and os.path.exists(data_abn_path):
+            has_cache = True
+            normal_loader.has_cache = True
+            abnormal_loader.has_cache = True
+        else:
+            has_cache = False
 
-        SIMILARITY_THRESHOLD = 0.65#0.73
-        reference_frame = 0
-        obj_predicted = 0
-        graph_nor = calculeTargetAll(adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
-        graph_abn = calculeTargetAll(adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+        if not has_cache:
+            adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor = temporal_graph_normal.frames2temporalGraph(input_normal_, input_normal_folder_index, input_normal_sample_index)
+            adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn = temporal_graph_abnormal.frames2temporalGraph(input_abnormal_, input_abnormal_folder_index, input_abnormal_sample_index)
 
-        data_nor, object_path_nor = calculeTarget(graph_nor, score_list_nor, bbox_fea_list_nor, box_list_nor, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
-        data_abn, object_path_abn = calculeTarget(graph_abn, score_list_abn, bbox_fea_list_abn, box_list_abn, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+            SIMILARITY_THRESHOLD = 0.65#0.73
+            reference_frame = 0
+            obj_predicted = 0
+            graph_nor = calculeTargetAll(adj_mat_nor, bbox_fea_list_nor, box_list_nor, score_list_nor, reference_frame, SIMILARITY_THRESHOLD, T, N)
+            graph_abn = calculeTargetAll(adj_mat_abn, bbox_fea_list_abn, box_list_abn, score_list_abn, reference_frame, SIMILARITY_THRESHOLD, T, N)
+
+            data_nor, object_path_nor = calculeTarget(graph_nor, score_list_nor, bbox_fea_list_nor, box_list_nor, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+            data_abn, object_path_abn = calculeTarget(graph_abn, score_list_abn, bbox_fea_list_abn, box_list_abn, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+
+            path = os.path.join(FRAMES_DIR, cache_folder, str(input_normal_folder_index.cpu().numpy()))
+            os.makedirs(path, exist_ok=True)
+
+            np.save(data_nor_path, data_nor)
+            np.save(data_abn_path, data_abn)
+
+        else:
+            data_nor = np.load(data_nor_path, allow_pickle=True)
+            data_abn = np.load(data_abn_path, allow_pickle=True)
+            #adj_mat, bbox_fea_list, box_list, score_list = np.load(fea_path, allow_pickle=True).tolist()
+            #graph_nor = np.load(graph_path, allow_pickle=True)        
 
         # First frame without objects
-        if data_nor is -1 or data_abn is -1:
-            print("Continuando")
+        if data_nor == -1 or data_abn == -1:
             continue
 
         input_normal_, target_normal = data_nor 

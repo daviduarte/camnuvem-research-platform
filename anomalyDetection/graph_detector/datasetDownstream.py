@@ -14,6 +14,8 @@ class DatasetDownstream(data.Dataset):
     #def __init__(self, args, is_normal=True, transform=None, test_mode=False, only_anomaly=False):
     def __init__(self, T, max_sample_duration, list_=None, normal = True, test = False):
 
+        self.has_cache = False
+
         self.normal = normal
         self.max_sample = 32                            # If the video is too big, we limitate due computational limitations
         self.T = T                                      # Frame qtt in any sample
@@ -150,8 +152,6 @@ class DatasetDownstream(data.Dataset):
             self.sample_qtd = self.parse_test()
         print("qtd de amostras: ")       
         print(self.frame_folders['sample_num'])
-
-
         
     def getImage(self, index):
 
@@ -163,33 +163,29 @@ class DatasetDownstream(data.Dataset):
         for i, item in enumerate(self.frame_folders['sample_num']):   # for each sample 'item' from each video 'i'
             count += item            
             if index <= count:             # The searched sample is in 'i' video
-            
                 sample_index = (((index - (count - item))-1) * self.stride)+1
-
                 break
 
             folder_index += 1
-
 
         if sample_index == -1:
             print("Error")
             exit()
 
-        # 'sample' is the sample index we are searching for
         sample = []
-        for i in range(self.T):
-            # Read the 'self.T' frames that compose the sample
-            
-            pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
-            print(pathSample)
+        if not self.has_cache:
+            # 'sample' is the sample index we are searching for
+            for i in range(self.T):
+                # Read the 'self.T' frames that compose the sample            
+                pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
 
-            img = cv2.imread(pathSample)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
+                img = cv2.imread(pathSample)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
 
-            sample.append(img)  
+                sample.append(img)  
 
-        #   [T, 1024]   [T-1, 1024]
-        sample = np.stack(sample, axis=0)
+            #   [T, 1024]   [T-1, 1024]
+            sample = np.stack(sample, axis=0)
 
         return sample, folder_index, sample_index
 

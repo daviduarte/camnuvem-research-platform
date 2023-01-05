@@ -34,10 +34,12 @@ import datasetPretext
 import datasetDownstream
 import temporalGraph
 import configparser
-from utils import Visualizer
-from utils import calculeTarget
-from utils import print_image
-import utils
+from util.utils import Visualizer
+from util.utils import calculeTarget
+from util.utils import print_image
+from util.utils import calculeTargetAll
+from util.utils import batch_processing
+#import utils
 from test import test
 from test_downstream import test as test_downstream
 import losses
@@ -92,8 +94,8 @@ def train(save_folder):
 
     training_loss_log = os.path.join(save_folder, "training_log.txt")
     test_loss_log = os.path.join(save_folder, "test_log.txt")
-    trining_log = open(training_loss_log, 'w')
-    test_log = open(test_loss_log, 'w')
+    trining_log = open(training_loss_log, 'a')
+    test_log = open(test_loss_log, 'a')
 
     buffer_size = T*5
     temporal_graph = temporalGraph.TemporalGraph(DEVICE, buffer_size, OBJECTS_ALLOWED, N, STRIDE)
@@ -125,12 +127,10 @@ def train(save_folder):
     reference_frame = 0
 
     best_loss = float("+Inf")    
-    loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
-    test_log.write(str(loss_mean) + " ")
-    test_log.flush()
-    torch.save(model.state_dict(), os.path.join(save_folder, MODEL_NAME + '{}.pkl'.format(0)))                    
-
-    
+    #loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
+    #test_log.write(str(loss_mean) + " ")
+    #test_log.flush()
+    #torch.save(model.state_dict(), os.path.join(save_folder, MODEL_NAME + '{}.pkl'.format(0)))
 
     data_loader = iter(train_loader)    
     MAX_EPOCH = len(data_loader) * MAX_EPOCH
@@ -159,18 +159,40 @@ def train(save_folder):
             # Returns [T-1, obj1, obj2], beeing obj1 the num object detected in the first frame and obj2 in the second frame
             # [] if a frame does not have objects
             
-            adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
-            SIMILARITY_THRESHOLD = 0.65#0.73
-            graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
-            # If in the first frame there is no object detected, so we have nothing to do here
-            # The number of detected objects may be less than N. In this case we have nothing to do here
-            #if len(bbox_fea_list[reference_frame][obj_predicted]) < N:
-            #    print("continuando")
-            #    continue       # Continue
+            cache_folder = "cache_pt_task/train/T="+str(T)+"-N="+str(N)+"/"
+            data_path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()), str(sample_index.cpu().numpy())+"_data.npy")
+            print(data_path)
+            has_cache = False
+            if os.path.exists(data_path):
+                train_loader = True
+                data_loader.has_cache = True
+            else:
+                has_cache = False
 
-            #data, object_path = calculeTarget(adj_mat, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
-            data, object_path = calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+
+            if not has_cache:
+                adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
+                SIMILARITY_THRESHOLD = 0.65#0.73
+                graph = calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, SIMILARITY_THRESHOLD, T, N)
+
+                # If in the first frame there is no object detected, so we have nothing to do here
+                # The number of detected objects may be less than N. In this case we have nothing to do here
+                #if len(bbox_fea_list[reference_frame][obj_predicted]) < N:
+                #    print("continuando")
+                #    continue       # Continue
+
+                #data, object_path = calculeTarget(adj_mat, bbox_fea_list, box_list, reference_frame, obj_predicted, temporal_graph, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+                data, object_path = calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, obj_predicted, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+
+                path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()))
+                os.makedirs(path, exist_ok=True)
+                np.save(data_path, data)
+
+            else:
+                print("Ok, temos cache, vamos carregar")
+                data = np.load(data_path, allow_pickle=True)
+
             if data == -1:
                 print("Continuing because there aren't a object in the first frame ")
                 continue
@@ -258,8 +280,8 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
     EXIT_TOKEN = FEA_DIM_OUT
 
-    trining_log = open(os.path.join(downstream_folder, "training_log.txt"), 'w')
-    test_log = open(os.path.join(downstream_folder, "test_log.txt"), 'w')
+    trining_log = open(os.path.join(downstream_folder, "training_log.txt"), 'a')
+    test_log = open(os.path.join(downstream_folder, "test_log.txt"), 'a')
 
     print("Carregando o checkpoint ")
     print(pretext_checkpoint)
@@ -286,7 +308,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     model = modelDownstream.ModelDownstream(128).to(DEVICE)
 
     LR_DOWNSTREAM = 0.00005
-    
+
     max_sample_duration = 300
     normal_dataset = DataLoader(datasetDownstream.DatasetDownstream(T, max_sample_duration, normal = True, test=False), batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)
@@ -304,6 +326,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     optimizer = optim.Adam(model.parameters(),
                             lr=LR_DOWNSTREAM, weight_decay=0.005)
 
+    STRIDE_TEST = 1     #
     if checkpoint is not False:
         # If we are loading a pre-trained model, we don't need retest it in the start
         print("Continuando o treinamento do modelo: ")
@@ -313,7 +336,6 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     else:
         # TODO: BETTER WAY TO PROPAGATE THE STRIDE TO DATASETDOWNSTREAM
         print("Comançando o treinamento do zero")
-        STRIDE_TEST = 1     #
         auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, STRIDE_TEST, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
         test_log.write(str(auc) + " ")
         test_log.flush()
@@ -327,6 +349,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
     normal_loader = iter(normal_dataset)    
     abnormal_loader = iter(abnormal_dataset)    
+    
     for step in tqdm(
             range(start_epoch, MAX_EPOCH + 1),
             total=MAX_EPOCH,
@@ -345,10 +368,9 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
             # [[sample, label, folder_index, sample_index] ...]
             input_normal = next(normal_loader)
-
             input_abnormal = next(abnormal_loader)
 
-            batch_list = utils.batch_processing(input_abnormal, input_normal, temporal_graph_normal, temporal_graph_abnormal, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
+            batch_list = batch_processing(input_abnormal, input_normal, temporal_graph_normal, temporal_graph_abnormal, normal_loader, abnormal_loader, DEVICE, EXIT_TOKEN, SIMILARITY_THRESHOLD, T, N)
 
             input_abnormal = [i[0] for i in batch_list]
             input_normal = [i[1] for i in batch_list]
@@ -373,8 +395,11 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
             optimizer.step()
 
             trining_log.write(str(cost.item()) + " ")
-
-            if step % len(normal_loader) == 0 and step > 10:
+            print("Step: ")
+            print(step)
+            print(len(normal_loader))
+            #if step % len(normal_loader) == 0:# and step > 10:
+            if step % 5 == 0:
                 trining_log.flush()
 
                 auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, STRIDE_TEST, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
@@ -396,8 +421,8 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
 
 def runDownstream():
 
-    #checkpoint = False
-    checkpoint = os.path.join(ROOT_DIR, "results/downstream_task/t=5-n=5-lr=5e-05-st=0.7/model72.pkl")
+    checkpoint = False
+    #checkpoint = os.path.join(ROOT_DIR, "results/downstream_task/t=5-n=5-lr=5e-05-st=0.7/model72.pkl")
 
     config = configparser.ConfigParser(allow_no_value=True)
     config.sections()
@@ -474,9 +499,9 @@ def find_value(dir):
 if __name__ == '__main__':
 
     # Search training parameter
-    #run()
+    run()
     #downstreamTask()
-    runDownstream()
+    #runDownstream()
 
 
 
