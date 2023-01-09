@@ -127,10 +127,10 @@ def train(save_folder):
     reference_frame = 0
 
     best_loss = float("+Inf")    
-    #loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
-    #test_log.write(str(loss_mean) + " ")
-    #test_log.flush()
-    #torch.save(model.state_dict(), os.path.join(save_folder, MODEL_NAME + '{}.pkl'.format(0)))
+    loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
+    test_log.write(str(loss_mean) + " ")
+    test_log.flush()
+    torch.save(model.state_dict(), os.path.join(save_folder, MODEL_NAME + '{}.pkl'.format(0)))
 
     data_loader = iter(train_loader)    
     MAX_EPOCH = len(data_loader) * MAX_EPOCH
@@ -364,7 +364,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
                 normal_loader = iter(normal_dataset)  
 
             if (step - 1) % len(abnormal_loader) == 0:
-                abnormal_loader = iter(abnormal_dataset)                  
+                abnormal_loader = iter(abnormal_dataset)
 
             # [[sample, label, folder_index, sample_index] ...]
             input_normal = next(normal_loader)
@@ -398,8 +398,8 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
             print("Step: ")
             print(step)
             print(len(normal_loader))
-            #if step % len(normal_loader) == 0:# and step > 10:
-            if step % 5 == 0:
+            if step % len(normal_loader) == 0:# and step > 10:
+            #if step % 5 == 0:
                 trining_log.flush()
 
                 auc = test_downstream(test_dataset, prunned_model_pt, model, viz, max_sample_duration, list_, STRIDE_TEST, DEVICE, False, GT_PATH, OBJECTS_ALLOWED, N, T, EXIT_TOKEN)
@@ -499,9 +499,9 @@ def find_value(dir):
 if __name__ == '__main__':
 
     # Search training parameter
-    run()
+    #run()
     #downstreamTask()
-    #runDownstream()
+    runDownstream()
 
 
 

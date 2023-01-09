@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 import normalDataset
 import anomalyDataset
 import sys
+import options
 
 viz = Visualizer(env='Anomaly-Graph', use_incoming_socket=False) 
 
@@ -61,9 +62,12 @@ anomaly_test_dataset = DataLoader(normalDataset.NormalDataset(T, normal =False, 
 reference_frame = 0
 if __name__ == "__main__":
 
+    args = options.parser.parse_args()
+
     params = sys.argv
     # Verifica se devemos carregar um grafo salvo anteriormente
-    if len(params) == 2 and params[1] == "--load-graph":
+    if args.load_graph == "1":
+    #if len(params) == 2 and params[1] == "--load-graph":
         print("Carregand um global_graph")
         GLOBAL_GRAPH = np.load("global_graph.npy", allow_pickle=True).tolist()
     else:
@@ -71,4 +75,4 @@ if __name__ == "__main__":
         print("Salvando o global graph no disco")
         np.save("global_graph.npy", GLOBAL_GRAPH)
 
-    test.test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH)
+    test.test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE, buffer_size, reference_frame, int(args.video_live), OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH)

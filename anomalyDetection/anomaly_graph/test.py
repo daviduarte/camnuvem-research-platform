@@ -9,6 +9,14 @@ from trajectory_analysis import analysis
 from sklearn.metrics import auc, roc_curve, precision_recall_curve
 import time
 
+
+
+def list2file(items, name):
+    file = open(name,'w')
+    for item in items:
+        file.write(str(item)+"\n")
+    file.close()
+
 #param labels A txt file path containing all test/anomaly frame level labels
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
 def getLabels(labels, list_test):
@@ -146,7 +154,7 @@ def calculeAbnormality(data, has_cache, video, cache_folder, DEVICE, buffer_size
 
             obj_predicted = j + last_len
             path = analysis.calculeObjectPath(graph_test, i, obj_predicted)
-            influence = np.zeros(len(video[1])) #[0 for i in range(len(video[1]))]
+            influence = np.copy(influence_global) #np.zeros(len(video[1])) 
 
             # The object has to have at minimum two frames
             if len(path) <= 1:
@@ -162,7 +170,8 @@ def calculeAbnormality(data, has_cache, video, cache_folder, DEVICE, buffer_size
             # key_frames is a vector of X elements
             # sim is a vector of X anoaly scores
             #start = time.time()
-            sim = measure_divergency(key_frames, edges, GLOBAL_GRAPH, SIMILARITY_THRESHOLD, DEVICE)
+            sim = measure_divergency(key_frames, edges, GLOBAL_GRAPH, KEY_FRAME_SIM, DEVICE)
+            print(sim)
             #end = time.time()
             #print("Tempo 2: " + str(end-start))
 
@@ -205,7 +214,7 @@ def calculeAbnormality(data, has_cache, video, cache_folder, DEVICE, buffer_size
     return influence_global
     
 
-def test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH):
+def test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE, buffer_size, reference_frame, video_live, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH):
     # For each trajectory, calculate the anomaly score
     # Anomaly first
 
@@ -232,6 +241,7 @@ def test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE,
 
     pred = []
     gt_ = []
+    cont = 0
     for i in range(len(anomaly_test_iter)):
 
         video = labels[i]
@@ -258,12 +268,27 @@ def test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE,
             print("Acabou o test")
             break
 
+        print("Video live: ")
+        print(video_live)
+        if video_live > -1 and cont < video_live:
+            print("chegou aki 1")
+            continue
+            
+
+        elif video_live > -1 and cont > video_live:
+            print("chegou aki 2")
+            print("Saindo.. Pq o obj aqui é só geral o resultado par ao test/"+str(video_live)+" video")
+            exit()
+        print("chegou aki 3")
 
         final_score = calculeAbnormality(data, has_cache, video, cache_folder, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH)
+        print("chegou aki 4")
         pred.extend(final_score.tolist())        
-        print("Qtd de frames adicionado no pred: "+str(len(final_score)))
-        print("Tem 1 no pred? ")
-        print(max(pred))
+
+        if video_live > -1:
+            print("Salvando o score do video de teste " + str(video_live))
+            list2file(final_score, "evaluation/anomaly-scores-test-"+str(video_live)+".txt")
+        cont += 1
 
     print(len(gt_))
     print(len(pred))
@@ -415,29 +440,35 @@ def measure_divergency(key_frames, edges, GLOBAL_GRAPH, SIMILARITY_THRESHOLD, DE
         oi = appea_dist_path[kf,:]
 
         # Get the similarest node
-        imax = torch.argmax(oi)
+        imax = torch.argmax(oi).cpu().numpy()
         max_ = appea_dist_path[kf, imax]
-        #print("The similarst node threshold id %s, index %s" % (max_, imax))
+        #print("The similarst node:  %s, index %s" % (max_, imax))
 
         if max_ < SIMILARITY_THRESHOLD:
             #print("Este nó não existe ")
             # Esse nó não tem correspondente no grapho global
+            print("O KF "+str(kf)+" não tem correspondência no grapho global")
             prob_an = 1.     # Probability of be anormal
             probs = []
         else:
-            #print("Este nó existe no grafo local")
+            print("Este nó existe no grafo local")
+            #print("Nó no grafo global correspondente: " + str(imax) + ", similaridade: " + str(max_))
             # Ok, temos um correspondente no grafo global
         
             # We have to verify what action the person made, and what was the probability of this acrion. We know the probability of all possible normal actions in 'probs'
-
             # get the nodes
             nodes = []
             if len(probs) > 0:
                 probs_ = np.asarray(probs)
-                nodes = probs_[:,0].tolist()
+                nodes = probs_[:,0].astype('int32').tolist()
+
+
+            #print("nodes")
+            #print(nodes)
+            #print(imax)
 
             if imax in nodes:   # If this action is linked with the former node
-                #print("Este nó é linkado com um nó anterior")
+                print("Este nó é linkado com um nó anterior")
                 #print(probs)
                 prob = probs[nodes.index(imax)][1]
                 # Greater the prob, less anomaly. Lesser the prob, greater the anomaly score
@@ -445,23 +476,38 @@ def measure_divergency(key_frames, edges, GLOBAL_GRAPH, SIMILARITY_THRESHOLD, DE
                 prob_an = 1 - prob
                 #exit()
             else:               # If this action IS NOT linked with former node
-                #print("Este nó NÃO é linkado com um nó anterior")
+                print("Este nó NÃO é linkado com um nó anterior")
+                
                 prob_an = 1.
 
 
             # Vamos calcular a probabilidade de cada saída desse nó
             edges_from_kf = edges[kf,:]
             tot_sum = np.sum(edges_from_kf)
+            probs = []
             
             # É possível ter um nó sem saída
             if tot_sum == 0:
+                print("Esse é um nó sem saída")
                 continue
-
+            
+            #print("porrra")
+            #print(edges_from_kf)
+            #print(len(edges_from_kf))
+            #print("O nó "+str(edges_from_kf.tolist().index(max(edges_from_kf)))+" possui valor "+str(max(edges_from_kf)))            
+            #print("**** prob antes: ")
+            #print(probs)
             for i, value in enumerate(edges_from_kf):    # i is the value containig in the edges of global_graph
+
                 if value == 0:              # if value == 0, there is no link between two nodes
                     continue
+
                 prob = value / tot_sum      # Never will be a division by 0 because above if
                 probs.append([i, float(prob)])    # That means, starting in node 'kf', the probability to go to 'i' is 'prob'
+            #print("**** prob Depois: ")
+            #print(probs)
+            #print("\n")
+
             
         # Each key frame has an anomaly score
         scores.append(prob_an)    

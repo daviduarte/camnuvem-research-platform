@@ -17,6 +17,7 @@ def calculeObjectPath(graph, frame, obj_index):
     return object_path
 
 
+
 def calculeFrameSimilarity(start_frame, path, score_list, bbox_fea_list, box_list, KEY_FRAME_SIM, DEVICE):
 
     nem_frames = len(bbox_fea_list) + 1
@@ -55,14 +56,12 @@ def calculeFrameSimilarity(start_frame, path, score_list, bbox_fea_list, box_lis
     
     cos_sim = torch.nn.CosineSimilarity(dim=1, eps=1e-08).to(DEVICE)
     sim = cos_sim(vet1, vet2)
-    
 
     # If sim < theshold, we consider the keyframe has changed
     key_frames = sim < KEY_FRAME_SIM
     key_frames[0] = True # We have to have at 1 keyframe, i.e., the first
     position = torch.where(key_frames==True, )    # Remember where each key_frame is
     key_frames = vet2[key_frames]
-
 
 
     return key_frames, position[0]

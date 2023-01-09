@@ -70,7 +70,6 @@ def train(normal_dataset, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED,
             np.save(graph_path, graph_nor)
         else:
             print("Temos a cache, usar xDDDDD")
-            print(graph_path)
             adj_mat, bbox_fea_list, box_list, score_list = np.load(fea_path, allow_pickle=True).tolist()
             graph_nor = np.load(graph_path, allow_pickle=True)
 
@@ -211,69 +210,58 @@ def addInGraph(key_frames, score_list, bbox_fea_list, box_list, KEY_FRAME_SIM, G
         node_index = add_node(GLOBAL_GRAPH, key_frames_sublist[0])
 
     vertex = GLOBAL_GRAPH[0]
+    vertex = torch.FloatTensor(vertex)
 
-    if len(vertex) > 0:
+    #key_frames_sublist = torch.from_numpy(key_frames_sublist)
 
-        vertex = torch.FloatTensor(vertex)
+    vec1_ = torch.repeat_interleave(vertex, key_frames_sublist.shape[0], dim=0).to(DEVICE)
+    vec2_ = key_frames_sublist.repeat(vertex.shape[0], 1).to(DEVICE)
 
-        #key_frames_sublist = torch.from_numpy(key_frames_sublist)
-
-        vec1_ = torch.repeat_interleave(vertex, key_frames_sublist.shape[0], dim=0).to(DEVICE)
-        vec2_ = key_frames_sublist.repeat(vertex.shape[0], 1).to(DEVICE)
-
-
-        appea_dist = cos(vec1_, vec2_).view(key_frames_sublist.shape[0], vertex.shape[0])
-             
-        nodes_to_add = appea_dist.shape[0]
-        nodes_in_vextex_num = appea_dist.shape[1]
-        #KEY_FRAME_SIM = 0.9999999
-
-        #print(appea_dist)
-        
-        # I need a map from unique_key_frames_index to vertex indexes
-        map_to_vertex = [-1 for i in range(unique_key_frames_index.shape[0])]
-        for i in range(nodes_to_add):
-            exists = False
-            node_index = False
-            for j in range(nodes_in_vextex_num):
-                #print("Sim %s %s: %s" % (i,j,appea_dist[i,j]))
-                if appea_dist[i,j] > KEY_FRAME_SIM:      # IF the node already exists in VEXTEX
-                    exists = True
-                    node_index = j
-                    break
-
-            if not exists:
-                node_index = add_node(GLOBAL_GRAPH, key_frames_sublist[i])
+    appea_dist = cos(vec1_, vec2_).view(key_frames_sublist.shape[0], vertex.shape[0])
             
-            map_to_vertex[i] = node_index
+    nodes_to_add = appea_dist.shape[0]
+    nodes_in_vextex_num = appea_dist.shape[1]
+    #KEY_FRAME_SIM = 0.9999999
+    
+    # I need a map from unique_key_frames_index to vertex indexes
+    map_to_vertex = [-1 for i in range(unique_key_frames_index.shape[0])]
+    for i in range(nodes_to_add):
+        exists = False
+        node_index = False
+        for j in range(nodes_in_vextex_num):
+            #print("Sim %s %s: %s" % (i,j,appea_dist[i,j]))
+            if appea_dist[i,j] > KEY_FRAME_SIM:      # IF the node already exists in VEXTEX
+                exists = True
+                node_index = j
+                break
+
+        if not exists:
+            node_index = add_node(GLOBAL_GRAPH, key_frames_sublist[i])
         
+        map_to_vertex[i] = node_index
+    
 
-        # Agora temos que atribuir os pesos às arestas 
-        for i in range(1, len(key_frames)):        # Para cada transição de key_frame no path
+    # Agora temos que atribuir os pesos às arestas 
+    for i in range(1, len(key_frames)):        # Para cada transição de key_frame no path
 
-            before = i-1
-            after = i
-            index_before = np.where(unique_key_frames_index == map_key_frame[before])
-            index_after = np.where(unique_key_frames_index == map_key_frame[after])
-            if len(index_before[0])==0 or len(index_after[0]) == 0:
-                print("Ops, deu erro")
-                exit()
-            index_before = index_before[0][0]
-            index_after = index_after[0][0]
-
-
-            index_in_graph_before = map_to_vertex[index_before]
-            index_in_graph_after = map_to_vertex[index_after]
-
-            
-
-            # Put this path in edges in graph
-            adj_matrix = GLOBAL_GRAPH[1]
-            adj_matrix[index_before][index_after] += 1
+        before = i-1
+        after = i
+        index_before = np.where(unique_key_frames_index == map_key_frame[before])
+        index_after = np.where(unique_key_frames_index == map_key_frame[after])
+        if len(index_before[0])==0 or len(index_after[0]) == 0:
+            print("Ops, deu erro")
+            exit()
+        index_before = index_before[0][0]
+        index_after = index_after[0][0]
 
 
-            #index_in_graph = map_to_vertex[map_key_frame[i]]
-            #print(index_in_graph)
+        index_in_graph_before = map_to_vertex[index_before]
+        index_in_graph_after = map_to_vertex[index_after]
+
+        # Put this path in edges in graph
+        adj_matrix = GLOBAL_GRAPH[1]
+        #adj_matrix[index_before][index_after] += 1
+        adj_matrix[index_in_graph_before][index_in_graph_after] += 1
 
 
 

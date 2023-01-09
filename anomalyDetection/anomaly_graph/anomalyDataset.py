@@ -117,11 +117,14 @@ class AnomalyDataset:
         # If we already has the processed frames in cache, we don't need load the images
         # 'sample' is the sample index we are searching for
         sample = []
+
         if not self.has_cache:
             
             for i in range(self.T):
                 # Read the 'self.T' frames that compose the sample
+                
                 pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
+                print(pathSample)
 
                 img = cv2.imread(pathSample)
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   
@@ -129,6 +132,7 @@ class AnomalyDataset:
 
         #   [T, 1024]   [T-1, 1024]
             sample = np.stack(sample, axis=0)
+
         return sample, folder_index, sample_index
 
     def get_label(self):

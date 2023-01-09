@@ -192,6 +192,7 @@ def test(dataloader, model_pt, model_ds, viz, max_sample_duration, list_, STRIDE
                     dataloader.has_cache = True
                 else:
                     has_cache = False
+                    dataloader.has_cache = False
 
                 if not has_cache:
                     adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(frames, folder_index, sample_index)
