@@ -30,12 +30,9 @@ OBJECTS_ALLOWED = [1,2,3,4]    # COCO categories ID allowed. The othwers will be
 SIMILARITY_THRESHOLD = 0.65#0.73    # SIMILARITY USED TO CALCULATE A OBJECT PATH
 max_sample_duration = 300
 
-
 EDGE = []
 VERTEX = []
 GLOBAL_GRAPH = (VERTEX, EDGE)
-
-
 
 ###
 # Training

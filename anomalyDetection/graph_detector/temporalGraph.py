@@ -312,7 +312,6 @@ class TemporalGraph:
 	# receive a set of frames [T, W, H, C]
 	# return a set of T-1 adjacency matrix connecting every object in a frame pair
 	def frames2temporalGraph(self, images, folder_index, sample_index):
-
 		ma = []
 		num_img = images.shape[0]
 		print("num oimage")

@@ -112,7 +112,7 @@ class dataset_h5(torch.utils.data.Dataset):
                 add_fea = np.tile(feat[-1], (add, 1))   # VOu repetir o vetor de características feat[-1] 11 vezes e adicionar da dimensão 1
                 fea_new = np.concatenate((feat, add_fea), axis=0)   # Aqui eu simplesmente copiei o feat[-1] 11 vezes e concatenei em feat, para resultar em um múltiplo de 32
                 fea_new = np.reshape(fea_new, (32,-1, tmp.shape[1]))
-        
+
             ano_fea = fea_new.mean(axis=1)
 
             preds.append(1) 

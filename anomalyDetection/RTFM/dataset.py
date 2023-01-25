@@ -87,10 +87,11 @@ class Dataset(data.Dataset):
 
         label = self.get_label()  # get video level label 0/1
         features = np.load(self.list[index].strip('\n'), allow_pickle=True)
+        print(self.list[index].strip('\n'))
+        print(features.shape)
         features = np.array(features, dtype=np.float32)
-
+        print(features.shape)
         
-
 
         #print(features.shape)
         if self.args.crop_10 == "False":

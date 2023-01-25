@@ -190,6 +190,8 @@ class Model(nn.Module):
         self.k_nor = self.num_segments // 10
         self.ten_crop = ten_crop
 
+        print("OIRRRRRRAAA")
+        print(n_features)
         self.Aggregate = Aggregate(len_feature=n_features)
         self.fc1 = nn.Linear(n_features, 512)
         self.fc2 = nn.Linear(512, 128)

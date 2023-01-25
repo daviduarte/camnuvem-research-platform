@@ -78,9 +78,9 @@ class DatasetPretext(data.Dataset):
 
     def __getitem__(self, index):
 
-        if self.test == False:
+        #if self.test == False:
             # TODO: shufle param in the DataLoader is broken? This is a workaroud to get a random sample
-            index = random.randint(0,self.totalSample-1)
+            #index = random.randint(0,self.totalSample-1)
 
         # 1 item is a windows of self.T frames
         sample_index = -1

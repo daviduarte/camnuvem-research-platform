@@ -1,8 +1,6 @@
 """
-
 Davi Duarte, UNESP, Prisma
 This code extract feature vectors from videos and train a anomaly detector
-
 """
 
 import configparser
@@ -35,8 +33,6 @@ def sanityCheck(args):
 		exit()
 
 if __name__ == '__main__':
-
-
 
 	#anomalyDetectionMethod = "RTFM"
 	anomalyDetectionMethod = "RTFM"
@@ -128,17 +124,17 @@ if __name__ == '__main__':
 			exit()
 
 		if crop_10:
-			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-test-10crop.list")
-			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-train-10crop.list")
-			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-test-abnormal-only-10crop.list")
+			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/camnuvem-"+args.feature_extractor+"-test-10crop.list")
+			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/camnuvem-"+args.feature_extractor+"-train-10crop.list")
+			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/camnuvem-"+args.feature_extractor+"-test-abnormal-only-10crop.list")
 		else:
-			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-test.list")
-			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-train.list")					
-			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-test-abnormal-only.list")			
+			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/camnuvem-"+args.feature_extractor+"-test.list")
+			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/camnuvem-"+args.feature_extractor+"-train.list")					
+			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/camnuvem-"+args.feature_extractor+"-test-abnormal-only.list")			
 
 
-		gt_output = os.path.join(root, "pesquisa/anomalyDetection/files/gt-ucf.npy")
-		gt_output_anomaly_only = os.path.join(root, "pesquisa/anomalyDetection/files/gt-ucf-anomaly-only.npy")
+		gt_output = os.path.join(root, "pesquisa/anomalyDetection/files/gt-camnuvem.npy")
+		gt_output_anomaly_only = os.path.join(root, "pesquisa/anomalyDetection/files/gt-camnuvem-anomaly-only.npy")
 
 		# Verify is we have to create the list file. This is mandatory either by RTFM than WSAL
 		if args.make_list_file == "True":

@@ -7,7 +7,110 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from .dataset import dataset_h5_test
 
+DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado"
+#param labels A txt file path containing all test/anomaly frame level labels
+#param list A txt file path containing all absolut path of every test file (normal and anomaly)
+def getLabels(labels, list_test):
+
+    # Colocar isso no config.ini depois
+    # TODO
+    test_normal_folder = os.path.join(DATASET_DIR, "videos/samples/test/normal")
+    test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
+
+    with open(labels) as file:
+        lines = file.readlines()
+    qtd_anomaly_files = len(lines)
+
+    gt = []
+    qtd_total_frame = 0
+    anomaly_qtd = 0
+    for line in lines:        
+
+        line = line.strip()
+        list = line.split("  ")
+
+        video_name = list[0]
+        video_path = os.path.join(test_anomaly_folder, video_name)
+        
+        # First we create an array with 'frame_qtd' zeros
+        # Zeros represents the 
+        cap = cv2.VideoCapture(video_path)
+        frame_qtd = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        qtd_total_frame += frame_qtd
+
+        frame_label = np.zeros(frame_qtd)
+
+        labels = list[1]
+        labels = labels.split(' ')
+
+        assert(len(labels) % 2 == 0) # We don't want incorrect labels
+        sample_qtd = int(len(labels)/2)
+        
+        
+        for i in range(sample_qtd):
+            index = i*2
+            start = round(float(labels[index]) * frame_qtd)
+            end = round(float(labels[index+1]) * frame_qtd)
+            
+            frame_label[start:end] = 1
+
+        gt.append([video_name, frame_label])
+
+        anomaly_qtd += 1
+
+
+
+
+    #############################################################
+
+    lines = []
+    with open(list_test) as f:
+        lines = f.readlines()
+        lines = [line.strip() for line in lines]
+
+
+    list_ = []
+    cont = 0
+    for path in lines:
+        cont+=1
+        if cont <= anomaly_qtd:
+            continue
+        filename = os.path.basename(path)  
+        list_.append(os.path.join(test_normal_folder, filename[:-4]+'.mp4'))
+
+
+    # Lets get the normal videos
+    qtd_total_frame = 0
+    for video_path in list_:
+        video_path = video_path.strip()
+
+        # First we create an array with 'frame_qtd' zeros
+        # Zeros represents the 
+        
+        cap = cv2.VideoCapture(video_path)
+        frame_qtd = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        qtd_total_frame += frame_qtd
+
+        frame_label = np.zeros(frame_qtd)   # All frames here are normal.
+        
+        gt.append([video_path, frame_label])
+        
+    return gt
+
+
 def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal = False):
+    ROOT_DIR = args.root
+    list_ = os.path.join(ROOT_DIR, "../", "files/graph_detector_test_05s.list")
+    LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
+    labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
+    print(labels)
+    exit()
+
+    truncated_frame_qtd = int((max_sample_duration) * NUM_SAMPLE_FRAME)    # The video has max this num of frame
+    if len(video[1]) > truncated_frame_qtd:
+        video[1] = video[1][0:truncated_frame_qtd]                  # If needed, truncate it
+
     with torch.no_grad():
         model.eval()
         pred_ = torch.zeros(0)
@@ -77,14 +180,10 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
                 #print(ano_score_.shape)
                 #exit()                
 
-
-
-
             # Isso aqui era pra dar 31 valores
             #print(ano_score_.shape)
             #exit()
-
-
+            
             se_score = se_score.data.cpu().numpy().flatten()
 
             #new_pred = ano_score.copy()

@@ -124,7 +124,6 @@ class AnomalyDataset:
                 # Read the 'self.T' frames that compose the sample
                 
                 pathSample = os.path.join(self.frame_folders['list'][folder_index], str(sample_index+i)+'.png')
-                print(pathSample)
 
                 img = cv2.imread(pathSample)
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   

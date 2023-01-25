@@ -102,7 +102,7 @@ def train(save_folder):
     #temporal_graph.generateTemporalGraph()
 
     batch_size = 1              # Aumentar no final
-    max_sample_duration = 200   # Limitando as amostras por no máximo 200 arquivos.png
+    max_sample_duration = 9999999999#200   # Limitando as amostras por no máximo 200 arquivos.png
     # each video is a folder number-nammed
     training_folder = os.path.join(FRAMES_DIR, "training")
     train_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, training_folder, max_sample_duration),
@@ -165,11 +165,11 @@ def train(save_folder):
             print(data_path)
             has_cache = False
             if os.path.exists(data_path):
-                train_loader = True
+                #train_loader.has_cache = True
                 data_loader.has_cache = True
+                has_cache = True
             else:
                 has_cache = False
-
 
             if not has_cache:
                 adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
@@ -493,15 +493,17 @@ def find_value(dir):
 
     files.sort()
     the_one = files[-1]
+
+    the_one = 0
     nome = "model"+str(the_one)+".pkl"
     return nome
 
 if __name__ == '__main__':
 
     # Search training parameter
-    #run()
+    run()
     #downstreamTask()
-    runDownstream()
+    #runDownstream()
 
 
 

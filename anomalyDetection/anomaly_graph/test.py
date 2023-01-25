@@ -67,9 +67,6 @@ def getLabels(labels, list_test):
 
         anomaly_qtd += 1
 
-
-
-
     #############################################################
 
     lines = []
@@ -107,7 +104,7 @@ def getLabels(labels, list_test):
         
     return gt
 
-def calculeAbnormality(data, has_cache, video, cache_folder, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH):
+def calculeAbnormality(data, video, dataset, cache_folder, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH):
 
     input = torch.squeeze(data[0]).to(DEVICE)
     labels = data[1].to(DEVICE)
@@ -119,6 +116,12 @@ def calculeAbnormality(data, has_cache, video, cache_folder, DEVICE, buffer_size
 
     fea_path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.numpy()[0]), str(sample_index.numpy()[0])+"_features.npy")
     graph_path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.numpy()[0]), str(sample_index.numpy()[0])+"_graph.npy")
+
+    has_cache = False
+    if os.path.exists(fea_path) and os.path.exists(graph_path):
+        has_cache = True
+        dataset.has_cache = True
+    print("has cache? " + str(has_cache))
 
     if not has_cache:
         T = input.shape[0]  # Cuz in test we consider the full frame video as a unique sample
@@ -281,7 +284,7 @@ def test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE,
             exit()
         print("chegou aki 3")
 
-        final_score = calculeAbnormality(data, has_cache, video, cache_folder, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH)
+        final_score = calculeAbnormality(data, video, anomaly_test_dataset, cache_folder, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH)
         print("chegou aki 4")
         pred.extend(final_score.tolist())        
 
@@ -318,7 +321,7 @@ def test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE,
     has_cache = False
     if os.path.exists(os.path.join(FRAMES_DIR, cache_folder)):
         has_cache = True
-        anomaly_test_dataset.has_cache = True
+        normal_test_dataset.has_cache = True
     print("has cache? " + str(has_cache))
 
     normal_test_iter = iter(normal_test_dataset)
@@ -360,8 +363,8 @@ def test(normal_test_dataset, anomaly_test_dataset, max_sample_duration, DEVICE,
             print("Acabou o test")
             break
 
-        final_score = calculeAbnormality(data, has_cache, video, cache_folder, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH)
-        pred.extend(final_score.tolist())        
+        final_score = calculeAbnormality(data, video, normal_test_dataset, cache_folder, DEVICE, buffer_size, reference_frame, OBJECTS_ALLOWED, N, STRIDE, SIMILARITY_THRESHOLD, KEY_FRAME_SIM, GLOBAL_GRAPH)
+        pred.extend(final_score.tolist())
         print("Qtd de frames adicionado no pred: "+str(len(final_score)))
         print("Tem 1 no pred? ")
         print(max(pred))        
@@ -441,14 +444,15 @@ def measure_divergency(key_frames, edges, GLOBAL_GRAPH, SIMILARITY_THRESHOLD, DE
 
         # Get the similarest node
         imax = torch.argmax(oi).cpu().numpy()
-        max_ = appea_dist_path[kf, imax]
+        max_ = appea_dist_path[kf, imax].cpu().numpy()
+
         #print("The similarst node:  %s, index %s" % (max_, imax))
 
         if max_ < SIMILARITY_THRESHOLD:
             #print("Este nó não existe ")
             # Esse nó não tem correspondente no grapho global
             print("O KF "+str(kf)+" não tem correspondência no grapho global")
-            prob_an = 1.     # Probability of be anormal
+            prob_an = 1-max_ #1.     # Probability of be anormal
             probs = []
         else:
             print("Este nó existe no grafo local")
@@ -473,12 +477,12 @@ def measure_divergency(key_frames, edges, GLOBAL_GRAPH, SIMILARITY_THRESHOLD, DE
                 prob = probs[nodes.index(imax)][1]
                 # Greater the prob, less anomaly. Lesser the prob, greater the anomaly score
                 #print("prob: "+str(prob))
-                prob_an = 1 - prob
+                prob_an = 0 #1 - (1 - prob)
                 #exit()
             else:               # If this action IS NOT linked with former node
                 print("Este nó NÃO é linkado com um nó anterior")
                 
-                prob_an = 1.
+                prob_an = 1 - max_ #0.5
 
 
             # Vamos calcular a probabilidade de cada saída desse nó
