@@ -22,10 +22,6 @@ def test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_s
             input = input[0]            
             input = np.squeeze(input)
 
-            print("CARAIOOOO")
-            print(folder_index.cpu().numpy())
-            print(sample_index.cpu().numpy())
-
 
             cache_folder = "cache_pt_task/test/T="+str(T)+"-N="+str(N)+"/"
             data_path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()), str(sample_index.cpu().numpy())+"_data.npy")

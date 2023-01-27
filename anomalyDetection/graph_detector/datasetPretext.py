@@ -56,18 +56,17 @@ class DatasetPretext(data.Dataset):
 
         # Several folders with frames inside.
         self.totalSample = 0
-        for folder in os.listdir(self.folder):
+        for folder in os.listdir(self.folder): # folder = anomaly AND normal
             folder = os.path.join(self.folder, folder)
-            print(folder)
             if not os.path.isdir(folder):
                 print("Folder tree wrong. We need a 'noral' and 'abnormal' folder under training/test folder.")
                 exit()
 
-            for filename in os.listdir(folder):
+            for filename in os.listdir(folder):     
 
                 frame_folder_path = os.path.join(folder, filename)
 
-                if os.path.isdir(frame_folder_path):
+                if os.path.isdir(frame_folder_path):        
                     self.frame_folders['list'].append(frame_folder_path)
                     num = self.calcule_sample_num(frame_folder_path)
                 

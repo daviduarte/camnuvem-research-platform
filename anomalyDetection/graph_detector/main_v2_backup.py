@@ -102,7 +102,7 @@ def train(save_folder):
     #temporal_graph.generateTemporalGraph()
 
     batch_size = 1              # Aumentar no final
-    max_sample_duration = 9999999999#200   # Limitando as amostras por no máximo 200 arquivos.png
+    max_sample_duration = 200   # Limitando as amostras por no máximo 200 arquivos.png
     # each video is a folder number-nammed
     training_folder = os.path.join(FRAMES_DIR, "training")
     train_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, training_folder, max_sample_duration),
@@ -236,43 +236,45 @@ def train(save_folder):
 def run():
     global T, N, LR, FEA_DIM_IN, OBJECT_FEATURE_SIZE, FEA_DIM_OUT, SIMILARITY_THRESHOLD, EXIT_TOKEN
 
-    T_ = [T, T+1, T+2, T+3]
-    N_ = [N, N+1, N+2]
+    T_ = [T, T-1, T-2, T-3]
+    N_ = [N, N-1, N-2]
     #LR_ = [LR*10, LR, LR/10]
     #SIMILARITY_THRESHOLD_ = [SIMILARITY_THRESHOLD, SIMILARITY_THRESHOLD-0.1, SIMILARITY_THRESHOLD-0.2]
 
-    for t in T_:
-        for n in N_:
-            #for lr in LR_:
-            #for st in SIMILARITY_THRESHOLD_:
-            T = t
-            N = n
-            #LR = lr
-            #SIMILARITY_THRESHOLD = st            # Threshold to verify if two detected are the same
+    
+    for n in N_:
+        for t in T_:
+            for u in range(3):  # The training is unstable. We have to train 3x and get the greater result
+                #for lr in LR_:
+                #for st in SIMILARITY_THRESHOLD_:
+                T = t
+                N = n
+                #LR = lr
+                #SIMILARITY_THRESHOLD = st            # Threshold to verify if two detected are the same
 
-            FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N * (T-1)) + (4 * N * (T-1))
-            FEA_DIM_OUT = OBJECT_FEATURE_SIZE + 4
-            EXIT_TOKEN = FEA_DIM_OUT
+                FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N * (T-1)) + (4 * N * (T-1))
+                FEA_DIM_OUT = OBJECT_FEATURE_SIZE + 4
+                EXIT_TOKEN = FEA_DIM_OUT
 
-            #if (T == 2 and N == 1 and LR == 0.005) or (T == 2 and N == 1 and LR == 0.0005) or (T == 2 and N == 1 and LR == 0.00005):
-            #    if st == 0.7:
-            #        continue
-            #if (T == 2 and N == 2 and LR == 0.0005):
-            #    if st == 0.7 or st == 0.6 or st == 0.5:
-            #        continue
+                #if (T == 2 and N == 1 and LR == 0.005) or (T == 2 and N == 1 and LR == 0.0005) or (T == 2 and N == 1 and LR == 0.00005):
+                #    if st == 0.7:
+                #        continue
+                #if (T == 2 and N == 2 and LR == 0.0005):
+                #    if st == 0.7 or st == 0.6 or st == 0.5:
+                #        continue
 
 
-            save_folder = "t="+str(T)+"-n="+str(N)+"-lr="+str(LR)+"-st="+str(SIMILARITY_THRESHOLD)
-            save_folder = os.path.join(OUTPUT_PATH_PRETEXT_TASK, save_folder)
+                save_folder = "t="+str(T)+"-n="+str(N)+"-lr="+str(LR)+"-st="+str(SIMILARITY_THRESHOLD)+"-"+str(u)
+                save_folder = os.path.join(OUTPUT_PATH_PRETEXT_TASK, save_folder)
 
-            try:
-                os.mkdir(save_folder)
-            except OSError as error:
-                print("Erro ao criar dir: ")
-                print(error)    
-                continue
+                try:
+                    os.mkdir(save_folder)
+                except OSError as error:
+                    print("Erro ao criar dir: ")
+                    print(error)    
+                    continue
 
-            train(save_folder)
+                train(save_folder)
 
 
 def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_checkpoint, downstream_folder, checkpoint):
