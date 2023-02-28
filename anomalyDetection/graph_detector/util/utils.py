@@ -129,7 +129,7 @@ def calculeTarget(graph, score_list, bbox_fea_list, box_list, reference_frame, o
 
         # The output is the x1, y1, x2, y2 object coordinates concat with object feature
         target = np.append(object_in_the_last_frame_box, object_in_the_last_frame).astype('float32')
-        target = torch.from_numpy(target).to(DEVICE)                
+        target = torch.from_numpy(target).to(DEVICE)
 
 
     # Now we have to calculate the input. The input will be N objects in each frame. 
@@ -259,10 +259,12 @@ def fileLines2List(file):
 # pred2 = (boxes2, scores2, labels2, bbox_fea_vec2) idem for pred1
 def print_image(input, bbox_list, object_path, index):
 
-    str_labels = np.asarray(fileLines2List("coco_labels.txt"))
+    str_labels = np.asarray(fileLines2List("../files/coco_labels.txt"))
 
     cont = 0
 
+    print("Object path: ")
+    print(object_path)
     for i in range(len(object_path)):
 
         image = input[i]
@@ -271,8 +273,8 @@ def print_image(input, bbox_list, object_path, index):
         object_interest = int(object_path[i])
 
         # If the object exits of scene, we will not print then
-        #if object_interest == -1:
-        #    return
+        if object_interest == -1:
+            return
 
         # if we have 4 images, we have 3 bbox_list (each in th middle of each image pair),
         # containing the objects of the anterior (index 0) and posterior (index 1).
@@ -293,6 +295,7 @@ def print_image(input, bbox_list, object_path, index):
         img_com_bb = draw_bounding_boxes(image_tensor, boxes, labels)
         img_com_bb = torch.moveaxis(img_com_bb, 0, 2)
         img_com_bb = img_com_bb.numpy()
+        print("Chegou aki")
         PIL.Image.fromarray(img_com_bb).convert("RGB").save("imagens/amostra-"+str(index)+"-"+str(cont)+".png")
 
         cont += 1

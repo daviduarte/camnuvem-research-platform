@@ -6,18 +6,22 @@ from torchvision import transforms, datasets
 from torchvision.utils import draw_bounding_boxes
 import string
 import objectDetector
-import util.utils as utils
+import util.utils as util
 import PIL
 import random
 import time
+from skimage.transform import resize
+import sys
+
 
 import cv2
 
 class TemporalGraph:
-	def __init__(self, device, buffer_size, OBJECTS_ALLOWED, N, STRIDE):
+	def __init__(self, device, buffer_size, OBJECTS_ALLOWED, N, STRIDE, model='yolov5'): #model = 'fasterrcnn_resnet50_fpn_coco'):
 		self.DEVICE = device
 		self.OBJECTS_ALLOWED = np.asarray(OBJECTS_ALLOWED)
-		object_detector = objectDetector.ObjectDetector(device)
+		self.model_type = model
+		object_detector = objectDetector.ObjectDetector(device, model=self.model_type)
 		self.model = object_detector.getModel().to(self.DEVICE)
 		self.OBJECT_DETECTION_THESHOLD = 0.55
 		#self.path_training_normal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/normal"		
@@ -34,7 +38,7 @@ class TemporalGraph:
 	def filterLowScores(self, prediction):
 
 		# read coco labels
-		str_labels = np.asarray(utils.fileLines2List("../files/coco_labels.txt"))
+		str_labels = np.asarray(util.fileLines2List("../files/coco_labels.txt"))
 
 		scores = prediction[0]['scores'].cpu().detach().numpy()
 		boxes = prediction[0]['boxes'].cpu().detach().numpy()
@@ -60,8 +64,6 @@ class TemporalGraph:
 		new_scores = scores[0:]#self.N]
 		new_labels = labels[0:]#self.N]
 		new_bbox_fea_vec = bbox_fea_vec[0:]#self.N]
-
-
 
 		"""
 		new_boxes = []
@@ -106,7 +108,18 @@ class TemporalGraph:
 
 		return (img1, img2)
 
-	def inference(self, image):	
+	def inference(self, image):
+		if self.model_type == 'fasterrcnn_resnet50_fpn_coco':
+			return self.inference_resnet(image)
+		elif self.model_type == 'yolov5':
+			return self.inference_yolo(image)
+		print("No model detected")
+		exit()
+
+
+	# Inferene
+	def inference_resnet(self, image):	
+		print("inference by ResNet")
 		original_image = image
 
 		# convert the image from BGR to RGB channel ordering and change the
@@ -132,6 +145,7 @@ class TemporalGraph:
 		image = image.to(self.DEVICE)
 
 		prediction = self.model(image)    
+
 
 		"""
 		APAGAR DEPOID
@@ -177,13 +191,191 @@ class TemporalGraph:
 
 		return prediction
 
+
+	def inference_yolo(self, image):	
+		original_image = image
+
+
+		# convert the image from BGR to RGB channel ordering and change the
+		# image from channels last to channels first ordering
+		#image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+		#image = image.view(2, 0, 1)
+
+		image = torch.permute(image, (2, 0, 1))
+		original_image = torch.permute(original_image, (2, 0, 1))
+		#image= torch.transpose(image, 0, 2)
+
+		# add the batch dimension, scale the raw pixel intensities to the
+		# range [0, 1], and convert the image to a floating point tensor
+		image = torch.unsqueeze(image, axis=0)
+		original_image = torch.unsqueeze(original_image, axis=0)
+
+		image = image / 255.0
+		
+		#image = torch.FloatTensor(image)
+
+		print(image.shape)
+		new_image_list = []
+		if True:
+			for image_ in image:
+				image_ = image_.cpu().numpy()
+			
+				original_size_h = image_.shape[1]
+				original_size_w = image_.shape[2]
+				if image_.shape[1] != 640 or image_.shape[0] != 640:
+					image_ = np.transpose(image_, (1, 2, 0))
+					new_image = resize(image_, (640, 640))		# Receives (H, W, C)
+					new_image = np.transpose(new_image, (2, 0, 1))
+
+				new_image_list.append(new_image)
+			
+			image = np.stack(new_image_list, axis=0)
+			image = torch.from_numpy(image).float()
+		
+
+		# send the input to the device and pass the it through the network to
+		# get the detections and predictions
+		images = image.to(self.DEVICE)
+
+
+		WIDTH = 640
+		HEIGHT = 640
+
+
+		#res = model(images)
+		sys.path.append("/media/denis/dados/CamNuvem")
+		from yolov5.utils.general import (Profile, cv2, non_max_suppression)		
+		seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
+
+		with dt[0]:
+			images = images.half() if self.model.fp16 else images.float()
+
+		# Inference
+		with dt[1]:
+			save_dir = '.'
+			path = '.'
+
+
+			#image = Image.open("pessoa.jpg")
+			#image = np.array(image)
+			#image = resize(image, (HEIGHT, WIDTH))
+			#image = np.transpose(image, (2, 0, 1))
+			#image = torch.from_numpy(image[None]).float()
+			#images = image
+			#print(images.shape)
+
+			pred = self.model(images, augment=False, visualize=False)
+
+
+		agnostic_nms = False
+		conf_thres=0.25  # confidence threshold
+		iou_thres=0.45  # NMS IOU threshold
+		max_det=1000  # maximum detections per image
+		classes=None
+		# NMS
+		with dt[2]:	
+			pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+
+
+		"""
+		Put in the resnet prediction format:
+		scores = prediction[0]['scores'].cpu().detach().numpy()
+		boxes = prediction[0]['boxes'].cpu().detach().numpy()
+		labels = prediction[0]['labels'].cpu().detach().numpy()
+		bbox_fea_vec = prediction[0]['bbox_fea_vec'].cpu().detach().numpy()     # TODO: Veiricar se é melhor pegar as features diretamente da ResNet, antes do MLP
+		"""
+		scores = []
+		boxes = []
+		labels = []
+		bbox_fea_vec = []
+
+		prediction = []
+		for *xyxy, conf, cls in reversed(pred[0]):
+			xyxy = [float(i) for i in xyxy]
+
+			# make the xyxy coords in the range [0, 320], [0,240]
+			xyxy[0] = (xyxy[0]/WIDTH)*original_size_w
+			xyxy[1] = (xyxy[1]/HEIGHT)*original_size_h
+			xyxy[2] = (xyxy[2]/WIDTH)*original_size_w
+			xyxy[3] = (xyxy[3]/HEIGHT)*original_size_h			
+
+			conf = float(conf)
+			cls = float(cls)
+			boxes.append(xyxy)
+			scores.append(conf)
+			labels.append(int(cls))
+
+			# Initially, lets disregard the bbox features
+			bbox_fea_vec.append(np.ones(1024))
+
+
+		# YOLO give labels 0-based. We consider labels 1 based. So we have +1 on labels
+		aux = {'scores': torch.Tensor(scores), 'boxes': torch.Tensor(boxes), 'labels': torch.Tensor(labels).type(torch.uint8)+1, 'bbox_fea_vec': torch.Tensor(bbox_fea_vec)}
+		prediction.append(aux)
+		#prediction[0]['scores'] = scores
+		#prediction[0]['boxes'] = boxes
+		#prediction[0]['labels'] = labels
+		#prediction[0]['bbox_fea_vec'] = bbox_fea_vec
+		
+		return prediction
+
+
+
+		## APAGAR DEPOIS!!!!
+		"""
+		scores = prediction[0]['scores'].cpu().detach().numpy()
+		boxes = prediction[0]['boxes'].cpu().detach().numpy()
+		labels = prediction[0]['labels'].cpu().detach().numpy()
+		print(labels)
+
+		# read coco labels
+		str_labels = np.asarray(utils.fileLines2List("../files/coco_labels.txt"))
+		str_labels = str_labels[labels]
+
+
+		# TODO: Veiricar se é melhor pegar as features diretamente da ResNet, antes do MLP
+		bbox_fea_vec = prediction[0]['bbox_fea_vec'].cpu().detach().numpy()
+
+
+		boxes, scores, labels, _ = self.filterLowScores(prediction)
+		boxes = torch.from_numpy(boxes) 
+		scores = torch.from_numpy(scores)  
+		labels = labels 
+		# 		
+		original_image = original_image.cpu().numpy().astype('uint8')
+		
+		image_tensor = torch.from_numpy(original_image)
+		image_tensor = torch.moveaxis(image_tensor, 2, 0)
+		
+		print(image_tensor.shape)
+		print(image_tensor.shape)
+		labels = list(map(str, labels))
+
+
+		img_com_bb = draw_bounding_boxes((image.squeeze()*255).cpu().type(torch.uint8), boxes, labels, font="Plane Crash.ttf")
+		img_com_bb = torch.moveaxis(img_com_bb, 0, 2)
+
+
+		img_com_bb = img_com_bb.numpy()
+
+		rd = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(3))
+
+		PIL.Image.fromarray(img_com_bb).convert("RGB").save("imagens/art"+rd+".png")
+
+
+		return prediction
+		"""
+
+
+		
+
 	# (boxes1, scores1, labels1, bbox_fea_vec1)
 	# Given the all object feature vector from two consecutives frame, get the similarity
 	# between all of then and apply a threshold to re-ientify a object at these frames.
 	def make_temporal_graph(self, pred1, pred2):
 
 		# read coco labels
-		str_labels = np.asarray(utils.fileLines2List("../files/coco_labels.txt"))
+		str_labels = np.asarray(util.fileLines2List("../files/coco_labels.txt"))
 
 		scores1 = pred1[1]          # pred1[0]['scores'].cpu().detach().numpy()
 		boxes1 = pred1[0]           # pred1[0]['boxes'].cpu().detach().numpy()
@@ -202,7 +394,7 @@ class TemporalGraph:
 
 		####
 		# Compute appearence distance between each object
-		####
+		####	
 		str_labels1 = str_labels[labels1-1]
 		str_labels2 = str_labels[labels2-1]
 
@@ -224,8 +416,6 @@ class TemporalGraph:
 
 		# Yeeep, here we have a adjacency matrix
 		appea_dist = appea_dist.view(bbox_fea_vec1.shape[0], bbox_fea_vec2.shape[0])
-
-
 
 		####
 		# Compute spacial distance similarity between each object
@@ -286,7 +476,12 @@ class TemporalGraph:
 
 		# The spacial_sim presents a very low alteration between two different points, so we have to use
 		# a exponential function to valorize this small difference
-		output = (0.4 * (50**(spacial_sim)-49) + 0.6*appea_dist)	#/2
+
+		if self.model_type == "fasterrcnn_resnet50_fpn_coco":
+			output = (0.4 * (50**(spacial_sim)-49) + 0.6*appea_dist)	#/2
+		else:
+			output = spacial_sim #(0.4 * spacial_sim + 0.6*appea_dist)	#/2
+			
 
 		return output
 

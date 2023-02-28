@@ -15,6 +15,7 @@ mkdir ../files
 scp -r denis@200.145.39.86:/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/files/gt-camnuvem.npy ../files
 scp -r denis@200.145.39.86:/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/files/gt-camnuvem-anomaly-only.npy ../files
 scp -r denis@200.145.39.86:/media/denis/526E10CC6E10AAAD/CamNuvem/pesquisa/anomalyDetection/files/graph_detector_test_05s.list ../files
+scp -r denis@200.145.39.87:/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/coco_labels.txt ../files
 
 
 #mkdir -p ./results/pretext_task

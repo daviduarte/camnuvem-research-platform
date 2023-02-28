@@ -228,7 +228,7 @@ class I3Res50(nn.Module):
 
 def i3_res50(num_classes):
     net = I3Res50(num_classes=num_classes, use_nl=False)
-    state_dict = torch.load(os.path.join(ROOT_DIR, 'extractI3d/pytorch-resnet3d/pretrained/i3d_r50_kinetics.pth'))
+    state_dict = torch.load(os.path.join(ROOT_DIR, '../../extractI3d/pytorch-resnet3d/pretrained/i3d_r50_kinetics.pth'))
     #print("kkk")
     #for key, value in state_dict.items() :
     #    print (key)

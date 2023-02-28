@@ -60,14 +60,14 @@ class C3D(nn.Module):
 		h = self.relu(self.conv5a(h))
 		h = self.relu(self.conv5b(h))
 		h = self.pool5(h)
-		return
+		#return
 		# CamNuvem dataset
 		# Imagens de 320 x 240 rendem h de (1, 512, 1, 8, 11)
 		# Vamos remover a dimensão 2 e fazer u avg pooling para transformar 45056 em 2048 dimensões
 
-		#h = h[:, :, 0, :, :]
-		#h = self.avgpool(h)
-		#return h
+		h = h[:, :, 0, :, :]
+		h = self.avgpool(h)
+		return h
 		#print(h.shape)
 
 		h = h.view(-1, 8192)

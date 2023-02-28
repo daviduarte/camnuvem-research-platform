@@ -77,7 +77,7 @@ def train(args):
     time.sleep(1)
 
     optimizer = optim.Adam(model.parameters(),
-                            lr=0.001, eps=1e-3, weight_decay=0.005)
+                            lr=0.0001, eps=1e-3, weight_decay=0.005)
 
     test_info = {"epoch": [], "test_AUC": []}
     best_AUC = -1
@@ -106,7 +106,7 @@ def train(args):
 
         trainRTFM(loadern_iter, loadera_iter, model, args.batch_size, optimizer, viz, device, contzera)
         contzera += 1
-        if step % 5 == 0 and step > 10:
+        if step % 50 == 0 and step > 10:
 
             auc = test(test_loader, model, args, viz, device, args.gt)
             test_info["epoch"].append(step)

@@ -190,8 +190,6 @@ class Model(nn.Module):
         self.k_nor = self.num_segments // 10
         self.ten_crop = ten_crop
 
-        print("OIRRRRRRAAA")
-        print(n_features)
         self.Aggregate = Aggregate(len_feature=n_features)
         self.fc1 = nn.Linear(n_features, 512)
         self.fc2 = nn.Linear(512, 128)
@@ -205,6 +203,11 @@ class Model(nn.Module):
         self.device = device
 
     def forward(self, inputs):
+
+        print("Input: ")
+        print(torch.max(inputs))
+        print(torch.min(inputs))
+        
 
         k_abn = self.k_abn
         k_nor = self.k_nor
@@ -361,22 +364,16 @@ class Model(nn.Module):
             total_select_abn_feature = torch.cat((total_select_abn_feature, feat_select_abn))   
 
         # As features com maiores normas de cada video
-        print("total_select_abn_feature")
         #(16, 1, 2048) ou (160, 1, 204)
         #print(total_select_abn_feature)
-        print(total_select_abn_feature.shape)
         
         # idx_abn é o indice do vetor de característica com a maior norma
         idx_abn_score = idx_abn.unsqueeze(2).expand([-1, -1, abnormal_scores.shape[2]])
-        print("idx_abn_score")
         #print(idx_abn_score)
-        print(idx_abn_score.shape)
 
         # Pego os scores dos segmentos que possuem a maior norma
         score_abnormal = torch.mean(torch.gather(abnormal_scores, 1, idx_abn_score), dim=1)  # top 3 scores in abnormal bag based on the top-3 magnitude
-        print("score_abnormal")
         #print(score_abnormal)
-        print(score_abnormal.shape)
         
 
         ####### process normal videos -> select top3 feature magnitude #######

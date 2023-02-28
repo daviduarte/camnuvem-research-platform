@@ -37,10 +37,6 @@ TEN_CROP_SIZE = 224
 
 
 
-
-
-
-
 """
 def extractFeatureVector(b_data):
 	# b_data is tensor of dimension 1*3*16*224*224
@@ -150,6 +146,7 @@ def chooseModel(feature_extractor, gpu_id):
 		return init_tsm_model(gpu_id)
 
 	elif feature_extractor == 'c3d':
+		print("Choosing c3d")
 		return C3D_model.C3D(487) # C3D
 
 	elif feature_extractor == 'i3d':
@@ -203,6 +200,7 @@ def start(imgs, ten_crop, feature_extractor, gpu_id, model):
 		input_ = input_.astype('float32')
 		print("kkk")
 		print(input_.shape)
+
 		input_ = torch.from_numpy(input_)
 
 		device = torch.device(gpu_id)
@@ -251,7 +249,12 @@ def start(imgs, ten_crop, feature_extractor, gpu_id, model):
 				output = net_c3d(new_input, EXTRACTED_LAYER)												
 			else:
 				input_ = input_.to(device)
+				print("input kkk: ")
+				print(input_.shape)
 				output = net_c3d(input_, EXTRACTED_LAYER)
+				print(output[1].shape)
+				exit()
+				
 
 			print(output[0])
 			output = output[0].detach().cpu().numpy() 

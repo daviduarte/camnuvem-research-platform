@@ -16,7 +16,9 @@ class Dataset(data.Dataset):
         #if self.dataset == 'shanghai':
         if test_mode:
             self.rgb_list_file = args.test_rgb_list
+            print("Carregando o " + args.test_rgb_list)
         else:
+            print("Carregando o " + args.rgb_list)
             self.rgb_list_file = args.rgb_list
 
 
@@ -45,7 +47,8 @@ class Dataset(data.Dataset):
 
         # If we want test only in anomaly videos
         if self.test_mode is True and self.only_anomaly is True:
-            self.list = self.list[0:140]  # The anomaly videos is 0 to 49
+            #self.list = self.list[0:140]  # The anomaly videos is 0 to 49
+            self.list = self.list[0:49]  # The anomaly videos is 0 to 49
 
             return
 
@@ -75,11 +78,11 @@ class Dataset(data.Dataset):
             elif self.dataset == 'camnuvem'                    :
             """
             if self.is_normal:
-                self.list = self.list[810:]
+                self.list = self.list[437:]
                 #print('normal list for CamNuvem')
                 #print(self.list)
             else:
-                self.list = self.list[:810]
+                self.list = self.list[:437]
                 #print('abnormal list for CamNuvem')
                 #print(self.list)                    
 
@@ -87,10 +90,9 @@ class Dataset(data.Dataset):
 
         label = self.get_label()  # get video level label 0/1
         features = np.load(self.list[index].strip('\n'), allow_pickle=True)
-        print(self.list[index].strip('\n'))
-        print(features.shape)
+        
         features = np.array(features, dtype=np.float32)
-        print(features.shape)
+        
         
 
         #print(features.shape)
@@ -98,7 +100,7 @@ class Dataset(data.Dataset):
 
             # Add a dummy dimension to simulate the 10 crop
             features = features[:, None, :]
-        features = torch.nn.functional.normalize(torch.from_numpy(features), dim=2).numpy()
+        #features = torch.nn.functional.normalize(torch.from_numpy(features), dim=2).numpy()
 
         if self.tranform is not None:
             features = self.tranform(features)

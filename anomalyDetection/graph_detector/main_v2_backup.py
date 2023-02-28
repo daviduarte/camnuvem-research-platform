@@ -11,6 +11,9 @@
 # https://github.com/pytorch/vision/pull/4302
 
 import torch
+from torchvision import transforms
+import gtransformers
+
 
 import numpy as np
 import PIL
@@ -29,6 +32,7 @@ from definitions import ROOT_DIR, FRAMES_DIR, DATASET_DIR
 import csv
 
 import modelPretext
+
 import modelDownstream
 import datasetPretext
 import datasetDownstream
@@ -54,6 +58,7 @@ config.sections()
 config.read('config.ini')
 T = int(config['PARAMS']['T'])                                      # Frame window. The object predict is always in the last frame
 N = int(config['PARAMS']['N'])                                      # How many objects we will consider for each frame?
+LOOK_FORWARD = int(config['PARAMS']['LOOK_FORWARD'])
 STRIDE = int(config['PARAMS']['STRIDE'])                            # STRIDE for each sample
 MAX_EPOCH = int(config['PARAMS']['MAX_EPOCH'])                      # Training max epoch
 LR = float(config['PARAMS']['LR'])                                    # Learning rate
@@ -68,8 +73,8 @@ OBJECTS_ALLOWED = [1,2,3,4]    # COCO categories ID allowed. The othwers will be
 FEA_DIM_IN = 0
 FEA_DIM_OUT = 0
 
-OUTPUT_PATH_PRETEXT_TASK = os.path.join(ROOT_DIR, "results/pretext_task")
-OUTPUT_PATH_DOWNSTREAM_TASK = os.path.join(ROOT_DIR, "results/downstream_task")
+OUTPUT_PATH_PRETEXT_TASK = os.path.join(ROOT_DIR, "results/i3d/pretext_task")
+OUTPUT_PATH_DOWNSTREAM_TASK = os.path.join(ROOT_DIR, "results/i3d/downstream_task")
 MODEL_NAME = "model"
 
 # Exemplo de como trabalhar com hook: https://discuss.pytorch.org/t/how-can-l-load-my-best-model-as-a-feature-extractor-evaluator/17254/5
@@ -88,7 +93,7 @@ def loadImage():
 
 def train(save_folder):
 
-    global SIMILARITY_THRESHOLD, MAX_EPOCH
+    global SIMILARITY_THRESHOLD, MAX_EPOCH, T, LOOK_FORWARD
     print("Iniciando treinamento para")
     print("T = " + str(T) + "; N = " + str(N) + "; LR = " + str(LR) + "; STRIDE: "+str(STRIDE)+"; SIMILARITY_THRESHOLD: " + str(SIMILARITY_THRESHOLD)) 
 
@@ -105,17 +110,22 @@ def train(save_folder):
     max_sample_duration = 200   # Limitando as amostras por no máximo 200 arquivos.png
     # each video is a folder number-nammed
     training_folder = os.path.join(FRAMES_DIR, "training")
-    train_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, training_folder, max_sample_duration),
+    print(training_folder)
+
+    train_loader = DataLoader(datasetPretext.DatasetPretext(LOOK_FORWARD, STRIDE, training_folder, max_sample_duration),
                                    batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)   
 
     test_folder = os.path.join(FRAMES_DIR, "test")
-    test_loader = DataLoader(datasetPretext.DatasetPretext(T, STRIDE, test_folder, max_sample_duration, test=True),
+    test_loader = DataLoader(datasetPretext.DatasetPretext(LOOK_FORWARD, STRIDE, test_folder, max_sample_duration, test=True),
                                    batch_size=batch_size, shuffle=False,
                                    num_workers=0, pin_memory=False)   
 
-
-    model = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT).to(DEVICE)
+    # I3D Input: (1, 3, 16, 224, 224), 16 is the segment lenght
+    model_used = "i3d"
+    model = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT, model_used).chooseModel().to(DEVICE)
+    #model = modelPretextTransformers.modelPretextTransformers(FEA_DIM_IN, FEA_DIM_OUT).to(DEVICE)
+    print(model)
     loss = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(),
                             lr=LR, weight_decay=0.005)
@@ -126,11 +136,14 @@ def train(save_folder):
     obj_predicted = 0
     reference_frame = 0
 
+    
     best_loss = float("+Inf")    
-    loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
+    loss_mean = test(model, model_used, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, LOOK_FORWARD, OBJECTS_ALLOWED, STRIDE)    
     test_log.write(str(loss_mean) + " ")
     test_log.flush()
     torch.save(model.state_dict(), os.path.join(save_folder, MODEL_NAME + '{}.pkl'.format(0)))
+    
+
 
     data_loader = iter(train_loader)    
     MAX_EPOCH = len(data_loader) * MAX_EPOCH
@@ -154,13 +167,30 @@ def train(save_folder):
             sample_index = input[2][0]
             input = input[0]
 
+            if model_used == 'i3d':
+                # I3D recieves: (1, 3, 16, 224, 224), 16 is the segment lenght. So we have to adjust
+                shape_ = input.shape
+                input_frames = input.view(shape_[0], shape_[4], shape_[1], shape_[2], shape_[3]).type(torch.FloatTensor).to(DEVICE)
+
+                # In the pretext task, we have to predict a future frame, so we need here just the first T frames. After, we will predicrt the LOOK_FORWARDº frame
+                input_frames = input_frames[:, :, 0:T, :, :]            
+
+                mean = [114.75, 114.75, 114.75]
+                std = [57.375, 57.375, 57.375]			
+                transform_norm = transforms.Compose([
+                    gtransformers.GroupTenNormalize(mean, std)
+                ])
+
+                input_frames = transform_norm(input_frames) #.detach().cpu().numpy()
+
             input = np.squeeze(input)
 
             # Returns [T-1, obj1, obj2], beeing obj1 the num object detected in the first frame and obj2 in the second frame
             # [] if a frame does not have objects
-            
 
-            cache_folder = "cache_pt_task/train/T="+str(T)+"-N="+str(N)+"/"
+            if model_used == 'i3d':
+                T = LOOK_FORWARD
+            cache_folder = "cache_pt_task/i3d/train/T="+str(T)+"-N="+str(N)+"/"
             data_path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()), str(sample_index.cpu().numpy())+"_data.npy")
             print(data_path)
             has_cache = False
@@ -173,7 +203,8 @@ def train(save_folder):
 
             if not has_cache:
                 adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
-                SIMILARITY_THRESHOLD = 0.65#0.73
+                #SIMILARITY_THRESHOLD = 0.65#0.73       # Resnet with fea vector
+                SIMILARITY_THRESHOLD = 0.97#0.73
                 graph = calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, SIMILARITY_THRESHOLD, T, N)
 
                 # If in the first frame there is no object detected, so we have nothing to do here
@@ -187,6 +218,10 @@ def train(save_folder):
 
                 path = os.path.join(FRAMES_DIR, cache_folder, str(folder_index.cpu().numpy()))
                 os.makedirs(path, exist_ok=True)
+
+                if data != -1:
+                    data = [data[0].cpu(), data[1].cpu()]
+
                 np.save(data_path, data)
 
             else:
@@ -199,11 +234,19 @@ def train(save_folder):
 
             #print_image(input, box_list, object_path, step)
 
-            input, target = data
-
+            data = [data[0].to(DEVICE), data[1].to(DEVICE)]
+            input, target = data       
             input = input.to(DEVICE)
             target = target.to(DEVICE)
-            output = model(input)
+            if model_used == 'i3d':
+                print("POOOOOOOOORRA")
+                print(input_frames.shape)
+                input_frames = {'frames': input_frames}
+                output = model(input_frames)
+            else:
+                output = model(input)
+
+            print(output.shape)    
 
             loss_ = loss(output, target)
             #viz.plot_lines('loss', cost.item())
@@ -217,7 +260,7 @@ def train(save_folder):
 
             if step % len(data_loader) == 0:# and step > 10:
                 trining_log.flush()
-                loss_mean = test(model, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, OBJECTS_ALLOWED, STRIDE)    
+                loss_mean = test(model, model_used, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, LOOK_FORWARD, OBJECTS_ALLOWED, STRIDE)    
                 test_log.write(str(loss_mean) + " ")
                 test_log.flush()
 
@@ -234,7 +277,7 @@ def train(save_folder):
     test_log.close()           
 
 def run():
-    global T, N, LR, FEA_DIM_IN, OBJECT_FEATURE_SIZE, FEA_DIM_OUT, SIMILARITY_THRESHOLD, EXIT_TOKEN
+    global T, N, LOOK_FORWARD, LR, FEA_DIM_IN, OBJECT_FEATURE_SIZE, FEA_DIM_OUT, SIMILARITY_THRESHOLD, EXIT_TOKEN
 
     T_ = [T, T-1, T-2, T-3]
     N_ = [N, N-1, N-2]
@@ -296,7 +339,7 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     model_pt = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT)
     model_pt.load_state_dict(torch.load(pretext_checkpoint))
 
-    batch_size = 200
+    batch_size = 12800 #200
     STRIDE = T
     # We use two temporal graph instances because we have an individual buffer to save computational power
     temporal_graph_normal = temporalGraph.TemporalGraph(DEVICE, batch_size, OBJECTS_ALLOWED, N, STRIDE)
@@ -308,6 +351,11 @@ def downstreamTask(T, N, st, N_DOWNSTRAM, FEA_DIM_IN, FEA_DIM_OUT, pretext_check
     
     # A entrada vai ser o tamanho da penútima saída do Pretext Model
     model = modelDownstream.ModelDownstream(128).to(DEVICE)
+    ct = 0
+    # Make all model trainable
+    for child in model.children():
+        for param in child.parameters():
+            param.requires_grad = True    
 
     LR_DOWNSTREAM = 0.00005
 

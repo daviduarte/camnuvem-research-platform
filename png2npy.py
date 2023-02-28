@@ -6,6 +6,7 @@ sys.path.append(r'/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/RTFM')
 from utils import process_feat
 sys.path.insert(0, "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/graph_detector")
 import modelPretext
+import torch
 
 def verify_if_cache_exists(path):
     if os.path.exists(path):
@@ -19,26 +20,28 @@ def read_all_dirs(path):
     if not os.path.exists(path):
         print("Error: The directory does not exist.")
         return []
-
-    file_list = []
-    for root, dirs, files in os.walk(path):
-        for dir in dirs:
-            file_list.append(os.path.join(root, dir))
-
-    return file_list
+    #file_list = []
+    # Load the dirs in numerical asc order
+    dirs = os.listdir(path)
+    dirs = [int(dir) for dir in dirs]
+    dirs.sort()
+    dirs = [os.path.join(path, str(dir)) for dir in dirs]
+    return dirs
 
 
 def read_all_from_dir(path):
     if not os.path.exists(path):
         print("Error: The directory does not exist.")
         return []
-
-    file_list = []
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            file_list.append(os.path.join(root, file))
-
-    return file_list
+    dirs = [int(npy[:-9]) for npy in os.listdir(path)]
+    dirs.sort()
+    dirs = [os.path.join(path, str(npy)+"_data.npy") for npy in dirs]
+    return dirs
+    #file_list = []
+    #for root, dirs, files in os.walk(path):
+    #    for file in files:
+    #        file_list.append(os.path.join(root, file))
+    #return file_list
 
 DEVICE = "cuda:0"
 OBJECT_FEATURE_SIZE = 1024
@@ -46,12 +49,17 @@ T = 5
 N = 5
 FEA_DIM_IN = (OBJECT_FEATURE_SIZE * N * (T-1)) + (4 * N * (T-1))
 FEA_DIM_OUT = OBJECT_FEATURE_SIZE + 4
-model = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT).to(DEVICE)
+model = modelPretext.ModelPretext(FEA_DIM_IN, FEA_DIM_OUT, "FCN")
+model = model.chooseModel().to(DEVICE)
+# Load best checkpoint
+PATH = "/home/denis/Documentos/model200763.pkl"
+checkpoint = torch.load(PATH)
+model.load_state_dict(checkpoint)
 
 train_anomaly_qtd = 49
 
-png_folder = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/cache_pt_task/test/T=5-N=5"
-npy_folder = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado/sshc/test"
+png_folder = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames_05s/cache_pt_task/yolov5/test/T=5-N=5"
+npy_folder = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado/yolov5/test"
 
 # We need the cache created. If it's not, run the pretext task from graph_detector
 verify_if_cache_exists(png_folder)

@@ -16,6 +16,9 @@ def getLabels(labels, list_test):
     test_normal_folder = os.path.join(DATASET_DIR, "videos/samples/test/normal")
     test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
 
+    #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
+    i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
+
     with open(labels) as file:
         lines = file.readlines()
     qtd_anomaly_files = len(lines)
@@ -34,10 +37,10 @@ def getLabels(labels, list_test):
         # First we create an array with 'frame_qtd' zeros
         # Zeros represents the 
         cap = cv2.VideoCapture(video_path)
-        print(video_path)
+
         frame_qtd = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         qtd_total_frame += frame_qtd
-        print(frame_qtd)
+
         frame_label = np.zeros(frame_qtd)
 
         labels = list[1]
@@ -68,15 +71,36 @@ def getLabels(labels, list_test):
         lines = f.readlines()
         lines = [line.strip() for line in lines]
 
+    lines_i3d = []
+    with open(i3d_list_test) as f:
+        lines_i3d = f.readlines()
+        lines_i3d = [line.strip() for line in lines_i3d]
+
 
     list_ = []
     cont = 0
-    for path in lines:
+    for i in range(len(lines)):
+        path = lines[i]
+        
         cont+=1
         if cont <= anomaly_qtd:
             continue
         filename = os.path.basename(path)  
-        list_.append(os.path.join(test_normal_folder, filename[:-4]+'.mp4'))
+        filee = os.path.join(test_normal_folder, filename[:-4]+'.mp4')
+        
+
+        # SSHC WORKAROUND. V
+        print(filee)
+        if not os.path.exists(filee):
+            path = lines_i3d[i]
+            filename = os.path.basename(path)  
+            filee = os.path.join(test_normal_folder, filename[:-4]+'.mp4')
+            print("REntrou aki")
+            print(filee)
+
+        list_.append(filee)
+
+    
 
 
     # Lets get the normal videos
@@ -101,7 +125,7 @@ def getLabels(labels, list_test):
 
 def test(dataloader, model, args, viz, device, _, only_abnormal = False):
     ROOT_DIR = args.root
-    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-sshc-test.list")
+    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-yolov5-test.list")
     LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
     
@@ -125,13 +149,15 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
         cont2 = 0
         #len_video = 0
 
+        print(args)
+        segment_size = args.segment_size
+        truncated_frame_qtd = 200 * segment_size
         for i, input in enumerate(dataloader):
 
             #if cont2 == len_video:
             #video_index += 1
             video = labels[i]
-            print("Carregando sample: ")
-            print(video[0])
+
             #if len(video[1]) > truncated_frame_qtd:
             #    video[1] = video[1][0:truncated_frame_qtd]                  # If needed, truncate it
             #len_video = len(video[1])   # Valor de amostras, já cortado
@@ -155,21 +181,20 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
 
             sig = logits
             sig = sig.cpu().detach()
-            #print(sig)
-            print("Siig")
-            print(sig.shape[0])
-
-            gt_ = video[1][0:sig.shape[0]*75]
+            print(video[0])
+            sig = sig[:-1]          # Lets ignore the last segment, because it may be a incomplete segment (i.e. a segment made with less than 75 frames). 
+            shape_ = sig.shape[0]
+            print(len(video[1]))
+            gt_ = video[1][0:(shape_)*75]
+            #gt_ = video[1]    
             gt.extend(gt_)
+
+            print(sig.shape)
+            print(len(gt_))
             if sig.shape[0] * 75 != len(gt_):
-                print("\n\n\nerrrorr")
-                print(sig.shape[0])
-                print(len(video[1]))
+                print("Erro. A quantidade de labels tem que ser a mesma de samples")
                 exit()
             pred = torch.cat((pred, sig))
-
-            print("Preeed")
-            print(pred.shape)
 
             with open("vis/"+str(cont)+".txt", 'w') as file:
                 for i in pred:
@@ -198,12 +223,6 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
         #else:
         #    gt = np.load('list/gt-ucf.npy')
 
-        print("Quantidade totaol de segmentos de 2.5 seg: ")
-        print(pred.shape)        
-
-        print("Quantidde total de frames no arquivo gt: ")
-        print(len(gt))
-
         #print(pred)
         #exit()
 
@@ -211,9 +230,6 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
 
         pred = np.repeat(np.array(pred), args.segment_size)
 
-        print(pred)
-        print("td do pred: ")
-        print(pred.shape)
 
         fpr, tpr, threshold = roc_curve(list(gt), pred)
 

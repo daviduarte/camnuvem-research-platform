@@ -1,33 +1,34 @@
-import torch
-import torch.nn as nn
-import torch.nn.init as torch_init
-
+from pretext_models import modelPretextFCN
+#from pretext_models import modelPretextYolov5
+import sys
+sys.path.append("/media/denis/dados/CamNuvem/pesquisa/extractI3d/pytorch-resnet3d/models")
+import resnet
+from other_models import resnetHead
 
 # TODO:
 # Weight init
-class ModelPretext(nn.Module):
-	def __init__(self, num_feat_in, num_feat_out):
-		super(ModelPretext, self).__init__()	
+class ModelPretext():
+	def __init__(self, num_feat_in, num_feat_out, model):
 
-		self.fc1 = nn.Linear(num_feat_in, 1024)
-		self.fc2 = nn.Linear(1024, 512)
-		self.fc3 = nn.Linear(512, 128)
-		self.fc4 = nn.Linear(128, num_feat_out)   
+		self.num_feat_in = num_feat_in
+		self.num_feat_out = num_feat_out
 
-		self.relu = nn.ReLU()  
+		self.model = model
 
-	def forward(self, inputs):	# Input é o ROI Align da Resnet. Não está limitado a 255. Range real é: [0, inf]
-		print("Valor máximo da entrada: ")
-		print(torch.max(inputs))
-		print("Valor mínimo da entrada: ")
-		print(torch.min(inputs))		
-		fc1 = self.relu(self.fc1(inputs))
-		fc2 = self.relu(self.fc2(fc1))
-		fc3 = self.relu(self.fc3(fc2))
+	def chooseModel(self):
+		if self.model == "FCN":
+			return modelPretextFCN.ModelPretextFCN(self.num_feat_in, self.num_feat_out)
+		elif self.model == "i3d":
+			print("Dimensões das feat out: ")
 
-		# In the downstream, the target is the object resnet feature vector. This is in the range [0-255] because is uint8
-		# So, relu may do the work in the last layer		
-		# Hovever, in the training of P.T, w the target is a RoiAlign from Resnet, which value range is [0,Inf]. So, relu keeps doing the work
-		fc4 = self.relu(self.fc4(fc3))	
+			
+			resnet_ = resnet.i3_res50(400) # vanilla I3D ResNet50
+			ResnetHead = resnetHead.resnetHead(2048, self.num_feat_out, resnet_)		# Feat size
+			
 
-		return fc4
+			return ResnetHead
+
+		#elif self.model == "yolov5":
+		#	return modelPretextYolov5.ModelPretextYolov5(self.num_feat_in, self.num_feat_out)
+
+
