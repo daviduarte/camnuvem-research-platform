@@ -22,10 +22,10 @@ class ObjectDetector:
 
 			if not training_obj_det:
 				self.freezeWeights()
-		elif model == "yolov5":
-			print("Usando o YOLO como extrator de objetos")
-			self.initBackBoneYolov5()
 
+		elif model == "yolov5":
+			print("\n\n **************** Usando o YOLO como extrator de objetos\n\n")
+			self.initBackBoneYolov5()
 		
 
 	def initBackboneModel(self):
@@ -75,8 +75,6 @@ class ObjectDetector:
 		#image = loadImage() 
 		#images = extractFrames()	
 
-
-
 	def initBackBoneYolov5(self):
 		YOLOV5_ROOT = os.path.join(definitions.ROOT_DIR, '../../../')
 		print(YOLOV5_ROOT)
@@ -91,7 +89,7 @@ class ObjectDetector:
 		from yolov5.utils.general import (LOGGER, Profile, check_file, check_img_size, check_imshow, check_requirements, colorstr, cv2,
 								increment_path, non_max_suppression, print_args, scale_coords, strip_optimizer, xyxy2xywh)
 
-
+	
 		imgsz=(640, 640)
 
 		weights = os.path.join(YOLOV5_ROOT, 'yolov5x.pt')
@@ -111,9 +109,6 @@ class ObjectDetector:
 
 		self.model = model
 		return
-
-
-
 
 
 	def freezeWeights(self):

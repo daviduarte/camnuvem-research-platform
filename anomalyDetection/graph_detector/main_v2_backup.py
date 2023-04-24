@@ -64,11 +64,13 @@ MAX_EPOCH = int(config['PARAMS']['MAX_EPOCH'])                      # Training m
 LR = float(config['PARAMS']['LR'])                                    # Learning rate
 OBJECT_FEATURE_SIZE = int(config['PARAMS']['OBJECT_FEATURE_SIZE'])  # OBJECT_FEATURE_SIZE
 SIMILARITY_THRESHOLD = float(config['PARAMS']['SIMILARITY_THRESHOLD'])
+BBOX_FEATURES = int(config['PARAMS']['BBOX_FEATURES'])
 
 GT_PATH = os.path.join(ROOT_DIR, '../')
 
 # Allow only 1 (person) 2 (bicycle) 3 (car) 4 (motorcycle)
 OBJECTS_ALLOWED = [1,2,3,4]    # COCO categories ID allowed. The othwers will be discarded
+
 
 FEA_DIM_IN = 0
 FEA_DIM_OUT = 0
@@ -103,7 +105,7 @@ def train(save_folder):
     test_log = open(test_loss_log, 'a')
 
     buffer_size = T*5
-    temporal_graph = temporalGraph.TemporalGraph(DEVICE, buffer_size, OBJECTS_ALLOWED, N, STRIDE)
+    temporal_graph = temporalGraph.TemporalGraph(DEVICE, buffer_size, OBJECTS_ALLOWED, N, STRIDE, BBOX_FEATURES=BBOX_FEATURES)
     #temporal_graph.generateTemporalGraph()
 
     batch_size = 1              # Aumentar no final
@@ -136,14 +138,11 @@ def train(save_folder):
     obj_predicted = 0
     reference_frame = 0
 
-    
     best_loss = float("+Inf")    
     loss_mean = test(model, model_used, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, LOOK_FORWARD, OBJECTS_ALLOWED, STRIDE)    
     test_log.write(str(loss_mean) + " ")
     test_log.flush()
     torch.save(model.state_dict(), os.path.join(save_folder, MODEL_NAME + '{}.pkl'.format(0)))
-    
-
 
     data_loader = iter(train_loader)    
     MAX_EPOCH = len(data_loader) * MAX_EPOCH
@@ -203,8 +202,8 @@ def train(save_folder):
 
             if not has_cache:
                 adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
-                #SIMILARITY_THRESHOLD = 0.65#0.73       # Resnet with fea vector
-                SIMILARITY_THRESHOLD = 0.97#0.73
+                SIMILARITY_THRESHOLD = 0.65#0.73       # Resnet with fea vector
+                #SIMILARITY_THRESHOLD = 0.97#0.73
                 graph = calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, SIMILARITY_THRESHOLD, T, N)
 
                 # If in the first frame there is no object detected, so we have nothing to do here
@@ -220,8 +219,9 @@ def train(save_folder):
                 os.makedirs(path, exist_ok=True)
 
                 if data != -1:
-                    data = [data[0].cpu(), data[1].cpu()]
+                    data = [data[0].cpu().numpy(), data[1].cpu().numpy()]
 
+                print(data)
                 np.save(data_path, data)
 
             else:
@@ -232,9 +232,10 @@ def train(save_folder):
                 print("Continuing because there aren't a object in the first frame ")
                 continue
 
+            #print("\n\nPRINTANDO IMAGEM!!@!!\n\n")
             #print_image(input, box_list, object_path, step)
 
-            data = [data[0].to(DEVICE), data[1].to(DEVICE)]
+            data = [torch.from_numpy(data[0]).to(DEVICE), torch.from_numpy(data[1]).to(DEVICE)]
             input, target = data       
             input = input.to(DEVICE)
             target = target.to(DEVICE)

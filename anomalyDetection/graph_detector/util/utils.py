@@ -292,6 +292,7 @@ def print_image(input, bbox_list, object_path, index):
 
         labels = ['1']
 
+        print(boxes)
         img_com_bb = draw_bounding_boxes(image_tensor, boxes, labels)
         img_com_bb = torch.moveaxis(img_com_bb, 0, 2)
         img_com_bb = img_com_bb.numpy()

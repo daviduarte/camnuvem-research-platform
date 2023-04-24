@@ -125,7 +125,7 @@ def getLabels(labels, list_test):
 
 def test(dataloader, model, args, viz, device, _, only_abnormal = False):
     ROOT_DIR = args.root
-    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-yolov5-test.list")
+    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-ssl-normalized-test.list")
     LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
     
@@ -185,13 +185,13 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
             sig = sig[:-1]          # Lets ignore the last segment, because it may be a incomplete segment (i.e. a segment made with less than 75 frames). 
             shape_ = sig.shape[0]
             print(len(video[1]))
-            gt_ = video[1][0:(shape_)*75]
+            gt_ = video[1][0:(shape_)*16]
             #gt_ = video[1]    
             gt.extend(gt_)
 
             print(sig.shape)
             print(len(gt_))
-            if sig.shape[0] * 75 != len(gt_):
+            if sig.shape[0] * 16 != len(gt_):
                 print("Erro. A quantidade de labels tem que ser a mesma de samples")
                 exit()
             pred = torch.cat((pred, sig))
@@ -209,7 +209,7 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
             cont += 1
             torch.cuda.empty_cache()
 
-            cont2 += 75
+            cont2 += 16
         #print("Qtd todal de exemplos de testr: ")
         #print(cont)
         #exit()

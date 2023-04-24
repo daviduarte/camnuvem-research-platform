@@ -64,7 +64,8 @@ def test(model, model_used, loss, test_loader, reference_frame, obj_predicted, v
                 os.makedirs(path, exist_ok=True)
 
                 if data != -1:
-                    data = [data[0].cpu(), data[1].cpu()]
+                    data = [data[0].cpu().numpy(), data[1].cpu().numpy()]
+                
                 
                 np.save(data_path, data)
             else:                
@@ -75,7 +76,7 @@ def test(model, model_used, loss, test_loader, reference_frame, obj_predicted, v
                 print("Continuing because there aren't a object in the first frame ")
                 continue
 
-            data = [data[0].to(DEVICE), data[1].to(DEVICE)]
+            data = [torch.from_numpy(data[0]).to(DEVICE), torch.from_numpy(data[1]).to(DEVICE)]
 
             # i3d needs frames in input. Otherwise, we need put the bondingbox and bbox features in input. 'input' var initially is the frames.
             

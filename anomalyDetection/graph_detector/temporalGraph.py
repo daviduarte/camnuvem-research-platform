@@ -13,16 +13,17 @@ import time
 from skimage.transform import resize
 import sys
 
-
 import cv2
 
 class TemporalGraph:
-	def __init__(self, device, buffer_size, OBJECTS_ALLOWED, N, STRIDE, model='yolov5'): #model = 'fasterrcnn_resnet50_fpn_coco'):
+	def __init__(self, device, buffer_size, OBJECTS_ALLOWED, N, STRIDE, model='yolov5', BBOX_FEATURES=True): #model = 'fasterrcnn_resnet50_fpn_coco'):
+		self.features = {}
 		self.DEVICE = device
 		self.OBJECTS_ALLOWED = np.asarray(OBJECTS_ALLOWED)
 		self.model_type = model
 		object_detector = objectDetector.ObjectDetector(device, model=self.model_type)
 		self.model = object_detector.getModel().to(self.DEVICE)
+
 		self.OBJECT_DETECTION_THESHOLD = 0.55
 		#self.path_training_normal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/normal"		
 		#self.path_training_abnormal = "/media/denis/526E10CC6E10AAAD/CamNuvem/dataset/CamNuvem_dataset_normalizado_frames/training/anomaly"				
@@ -33,6 +34,7 @@ class TemporalGraph:
 		self.buffer_size = buffer_size
 		self.buffer = []	# [[folder_index, img_index], [boxes1, scores1, labels1, bbox_fea_vec1]]
 							#				ID             , 				CNN result
+		self.BBOX_FEATURES = BBOX_FEATURES
 
 	# Get only the top 'self.N' objects with better scores
 	def filterLowScores(self, prediction):
@@ -49,6 +51,7 @@ class TemporalGraph:
 
 		# Let's remove objects not interesting
 		inds = [i in self.OBJECTS_ALLOWED for i in labels]
+		print(bbox_fea_vec)
 		scores, boxes, labels, bbox_fea_vec = scores[inds], boxes[inds], labels[inds], bbox_fea_vec[inds]
 		
 
@@ -191,10 +194,67 @@ class TemporalGraph:
 
 		return prediction
 
+	
+	def get_features(self, name):
+		def hook(model, input, output):
+			self.features[name] = output
+		return hook
+
+	def yolov5_result(self, images, fea=False):
+
+		#res = model(images)
+		sys.path.append("/media/denis/dados/CamNuvem")
+		from yolov5.utils.general import (Profile, cv2, non_max_suppression)		
+		seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
+
+		with dt[0]:
+			images = images.half() if self.model.fp16 else images.float()
+
+		# Inference
+		with dt[1]:
+			save_dir = '.'
+			path = '.'
+
+			#image = Image.open("pessoa.jpg")
+			#image = np.array(image)
+			#image = resize(image, (HEIGHT, WIDTH))
+			#image = np.transpose(image, (2, 0, 1))
+			#image = torch.from_numpy(image[None]).float()
+			#images = image
+			#print(images.shape)
+
+			self.model.model.model[23].register_forward_hook(self.get_features('fea'))
+			pred = self.model(images, augment=False, visualize=False)
+			features = self.features['fea'][0]
+			
+			avgpool = torch.nn.AdaptiveAvgPool2d((1, 1))
+			features = avgpool(features)	# (1280, 1, 1)
+
+			# Feature maps das imagens
+	
+			#exit()
+			#print(self.features['Detect'][2][0].shape)
+			#print(self.features['Detect'][2][1].shape)
+			#print(self.features['Detect'][2][2].shape)
+
+		if fea == True:
+			return features
+
+		agnostic_nms = False
+		conf_thres=0.25  # confidence threshold
+		iou_thres=0.45  # NMS IOU threshold
+		max_det=1000  # maximum detections per image
+		classes=None
+		# NMS
+		with dt[2]:	
+			pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+
+
+		return pred
+				
 
 	def inference_yolo(self, image):	
 		original_image = image
-
 
 		# convert the image from BGR to RGB channel ordering and change the
 		# image from channels last to channels first ordering
@@ -237,45 +297,12 @@ class TemporalGraph:
 		# get the detections and predictions
 		images = image.to(self.DEVICE)
 
-
 		WIDTH = 640
 		HEIGHT = 640
 
+		print("Shape entrando no YOLO")
 
-		#res = model(images)
-		sys.path.append("/media/denis/dados/CamNuvem")
-		from yolov5.utils.general import (Profile, cv2, non_max_suppression)		
-		seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
-
-		with dt[0]:
-			images = images.half() if self.model.fp16 else images.float()
-
-		# Inference
-		with dt[1]:
-			save_dir = '.'
-			path = '.'
-
-
-			#image = Image.open("pessoa.jpg")
-			#image = np.array(image)
-			#image = resize(image, (HEIGHT, WIDTH))
-			#image = np.transpose(image, (2, 0, 1))
-			#image = torch.from_numpy(image[None]).float()
-			#images = image
-			#print(images.shape)
-
-			pred = self.model(images, augment=False, visualize=False)
-
-
-		agnostic_nms = False
-		conf_thres=0.25  # confidence threshold
-		iou_thres=0.45  # NMS IOU threshold
-		max_det=1000  # maximum detections per image
-		classes=None
-		# NMS
-		with dt[2]:	
-			pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-
+		pred = self.yolov5_result(images)	# images = [1,3,640,640]
 
 		"""
 		Put in the resnet prediction format:
@@ -290,23 +317,77 @@ class TemporalGraph:
 		bbox_fea_vec = []
 
 		prediction = []
+		cont = 0
 		for *xyxy, conf, cls in reversed(pred[0]):
 			xyxy = [float(i) for i in xyxy]
+			
+			# For some reason, some coordinates can be negative. If this happens, we replace it to 0
+			xyxy_ = []
+			for i in xyxy:
+				if i < 0:
+					xyxy_.append(0)
+				else:
+					xyxy_.append(i)
+			xyxy = xyxy_
 
+			xyxy_resized = []
+
+			print(xyxy)
 			# make the xyxy coords in the range [0, 320], [0,240]
-			xyxy[0] = (xyxy[0]/WIDTH)*original_size_w
-			xyxy[1] = (xyxy[1]/HEIGHT)*original_size_h
-			xyxy[2] = (xyxy[2]/WIDTH)*original_size_w
-			xyxy[3] = (xyxy[3]/HEIGHT)*original_size_h			
+			xyxy_resized.append((xyxy[0]/WIDTH)*original_size_w)
+			xyxy_resized.append((xyxy[1]/HEIGHT)*original_size_h)
+			xyxy_resized.append((xyxy[2]/WIDTH)*original_size_w)
+			xyxy_resized.append((xyxy[3]/HEIGHT)*original_size_h)
+
+			print(xyxy_resized)
 
 			conf = float(conf)
 			cls = float(cls)
-			boxes.append(xyxy)
+			boxes.append(xyxy_resized)
 			scores.append(conf)
 			labels.append(int(cls))
 
-			# Initially, lets disregard the bbox features
-			bbox_fea_vec.append(np.ones(1024))
+			from PIL import Image as im
+
+			# Initially, lets disregard the bbox features 
+			if self.BBOX_FEATURES == True:
+				print("Vamos usar as features dos bbox")
+				object_crop_list = []
+#				for bbox in xyxy:
+				# cut the image on this bbox
+
+				image_bbox = image[0, :, int(xyxy[1]):int(xyxy[3]), int(xyxy[0]):int(xyxy[2])]
+				oi = image_bbox.numpy()
+				
+				
+				oi = np.transpose(oi, (1,2,0))
+				oi = resize(oi, (640, 640))
+
+				#oi = (oi*255).astype(np.uint8)
+				
+				#data = im.fromarray(oi)
+				#data.save("teste"+str(cont)+".png")
+
+				oi = torch.from_numpy(np.transpose(oi, (2, 0, 1)))
+				oi = oi[None, :, :, :].to(self.DEVICE)
+
+				pred = self.yolov5_result(oi, fea=True)
+				pred = pred[:,0,0]
+
+				print(type(pred))
+				print(pred.shape)
+
+				bbox_fea_vec.append(pred.cpu().numpy())
+				
+
+				cont += 1
+
+				# resize to WIDTHxHEIGHT
+
+				# YoloV5 feature vector extraction
+			else:
+				print("Não vamos usar as features dos bbox")
+				bbox_fea_vec.append(np.ones(1280))
 
 
 		# YOLO give labels 0-based. We consider labels 1 based. So we have +1 on labels
@@ -480,8 +561,8 @@ class TemporalGraph:
 		if self.model_type == "fasterrcnn_resnet50_fpn_coco":
 			output = (0.4 * (50**(spacial_sim)-49) + 0.6*appea_dist)	#/2
 		else:
-			output = spacial_sim #(0.4 * spacial_sim + 0.6*appea_dist)	#/2
-			
+			#output = spacial_sim #(0.4 * spacial_sim + 0.6*appea_dist)	#/2
+			output = (0.4 * (50**(spacial_sim)-49) + 0.6*appea_dist)	#/2
 
 		return output
 
