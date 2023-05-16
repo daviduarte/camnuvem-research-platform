@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.init as torch_init
 
-
 # TODO:
 # Weight init
 class resnetHead(nn.Module):

@@ -1,6 +1,16 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as torch_init
+
+
+def weight_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1 or classname.find('Linear') != -1:
+        print("ÔÔÔÔÔÔ BUCETAAAAAAAA")
+        torch_init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            m.bias.data.fill_(0)
 
 class HOE_model(nn.Module):
     def __init__(self, nfeat, nclass, ten_crop, dropout_rate=0.8, k_size=5):
@@ -20,6 +30,8 @@ class HOE_model(nn.Module):
         self.dropout_rate = dropout_rate
         self.k_size = k_size
         self.ten_crop = ten_crop
+
+        self.apply(weight_init)
         # if self.training:
         #     self._initialize_weights()
 
@@ -41,10 +53,11 @@ class HOE_model(nn.Module):
     def forward(self, input, device):
 
         #input.to("cuda:1")
-        print(device)
-        input = input.to(device)
-        print(input.device)
-        #exit()
+        #print(device)
+        input = input.to(device).float()
+        print(input.type())
+
+    
         #print(input.shape)
         fea = F.relu(self.fc0(input))
         fea = F.dropout(fea, self.dropout_rate, training=self.training)
@@ -78,8 +91,8 @@ class HOE_model(nn.Module):
         #else:
         new_fea = new_fea.permute(0,2,1)
 
-        print("Shape d new_fea")
-        print(new_fea.shape)
+        #print("Shape d new_fea")
+        #print(new_fea.shape)
 
         # semantic
         # EQ 5

@@ -34,12 +34,11 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
     print("********************************")
     torch.cuda.empty_cache()
 
-    ver ='WSAL'
+    ver ='WSAL4'
 
-    args = {"gt": gt, "segment_size": segment_size}
+    args = {"gt": gt, "segment_size": segment_size, "root": root}
 
     #mask_path = "./arquivos/mask.h5"
-
 
     #hdf5_path = "/test/UCF-Crime/UCF/gcn_feas.hdf5" 
 
@@ -60,7 +59,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
                                                     batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=False, drop_last=True)
 
     test_loader = DataLoader(dataset_h5_test(videos_pkl_test, hdf5_path_test, ten_crop), pin_memory=False)    
-    
+
     test_loader_only_anomaly = DataLoader(dataset_h5_test(videos_pkl_test, hdf5_path_test, ten_crop, only_anomaly=True), pin_memory=False)
 
     model = HOE_model(nfeat=features, nclass=1, ten_crop = ten_crop)
@@ -97,7 +96,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
         #test_loader = test_loader.cuda(gpu_id)
         #train_loader = train_loader.cuda(gpu_id)
 
-    optimizer = optim.Adagrad(model.parameters(), lr=0.00001) # original é 0.001
+    optimizer = optim.Adagrad(model.parameters(), lr=0.001) # original é 0.001
     opt_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[300,400], gamma=0.5)
     start_epoch = 0
         
@@ -120,7 +119,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
     # Before training let's get the AUC
     best_auc = 0
     auc = test(test_loader, model, args, viz, device, ten_crop, gt)
-    for epoch in range(start_epoch, 500):
+    for epoch in range(start_epoch, 5000):
        
         end = time.time()
         pbar = tqdm(total=len(train_loader))
@@ -160,10 +159,18 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
                 #print("Ten crop ")
                 #print(an_feat.shape)
 
+            print("\n\nan_feat: ")
+            print(an_feat.shape)
+            print(torch.max(an_feat))
+            print(torch.min(an_feat))
+            print(torch.mean(an_feat))
             ano_ss, ano_fea = model(an_feat, device)
             nor_ss, nor_fea = model(no_feat, device)
 
+            
+
             ano_cos = torch.cosine_similarity(ano_fea[:,1:], ano_fea[:,:-1], dim=2)
+            
             dynamic_score_ano = 1-ano_cos
             nor_cos = torch.cosine_similarity(nor_fea[:,1:], nor_fea[:,:-1], dim=2)
             dynamic_score_nor = 1-nor_cos
