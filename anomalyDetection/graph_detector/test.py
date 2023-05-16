@@ -47,7 +47,7 @@ def test(model, model_used, loss, test_loader, reference_frame, obj_predicted, v
             if not has_cache:
                 adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
 
-                SIMILARITY_THRESHOLD = 0.65#0.73
+                #SIMILARITY_THRESHOLD = 0.65#0.73
 
                 graph = utils.calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, SIMILARITY_THRESHOLD, T, N)
 
@@ -65,7 +65,6 @@ def test(model, model_used, loss, test_loader, reference_frame, obj_predicted, v
 
                 if data != -1:
                     data = [data[0].cpu().numpy(), data[1].cpu().numpy()]
-                
                 
                 np.save(data_path, data)
             else:                
@@ -95,5 +94,8 @@ def test(model, model_used, loss, test_loader, reference_frame, obj_predicted, v
 
         loss_mean = loss_mean / len(data_loader_test)
         print("Mean loss: ", str(loss_mean))
-        viz.plot_lines('test_loss', loss_mean)
+        try:
+            viz.plot_lines('test_loss', loss_mean)
+        except:
+            print("Visdom not on")
         return loss_mean

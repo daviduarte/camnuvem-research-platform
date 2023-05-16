@@ -145,12 +145,16 @@ def train(save_folder):
     torch.save(model.state_dict(), os.path.join(save_folder, MODEL_NAME + '{}.pkl'.format(0)))
 
     data_loader = iter(train_loader)    
-    MAX_EPOCH = len(data_loader) * MAX_EPOCH
-    for step in tqdm(
-            range(1, MAX_EPOCH + 1),
-            total=MAX_EPOCH,
+    max_epoch_ = len(data_loader) * MAX_EPOCH
+    t = tqdm(
+            range(1, max_epoch_ + 1),
+            total=max_epoch_,
             dynamic_ncols=True
-    ):    
+    )
+    t.refresh()  #force print final state
+    t.reset()  #reuse bar    
+    for step in range(len(t)):
+        t.update()
 
         with torch.set_grad_enabled(True):
             model.train()
@@ -202,7 +206,7 @@ def train(save_folder):
 
             if not has_cache:
                 adj_mat, bbox_fea_list, box_list, score_list = temporal_graph.frames2temporalGraph(input, folder_index, sample_index)
-                SIMILARITY_THRESHOLD = 0.65#0.73       # Resnet with fea vector
+                #SIMILARITY_THRESHOLD = 0.65#0.73       # Resnet with fea vector
                 #SIMILARITY_THRESHOLD = 0.97#0.73
                 graph = calculeTargetAll(adj_mat, bbox_fea_list, box_list, score_list, reference_frame, SIMILARITY_THRESHOLD, T, N)
 
@@ -255,11 +259,14 @@ def train(save_folder):
             loss_.backward()
             optimizer.step()
 
-            viz.plot_lines('training_loss', loss_.item())
+            #viz.plot_lines('training_loss', loss_.item())
 
             trining_log.write(str(loss_.item()) + " ")
 
-            if step % len(data_loader) == 0:# and step > 10:
+            #print("Step: " + str(step))
+            #print("data loader: " + str(len(data_loader)))
+
+            if step % len(data_loader) == 0 and step > 1:
                 trining_log.flush()
                 loss_mean = test(model, model_used, loss, test_loader, reference_frame, obj_predicted, viz, buffer_size, DEVICE, EXIT_TOKEN, N, SIMILARITY_THRESHOLD, T, LOOK_FORWARD, OBJECTS_ALLOWED, STRIDE)    
                 test_log.write(str(loss_mean) + " ")
@@ -280,14 +287,15 @@ def train(save_folder):
 def run():
     global T, N, LOOK_FORWARD, LR, FEA_DIM_IN, OBJECT_FEATURE_SIZE, FEA_DIM_OUT, SIMILARITY_THRESHOLD, EXIT_TOKEN
 
-    T_ = [T, T-1, T-2, T-3]
-    N_ = [N, N-1, N-2]
+    #T_ = [T, T-1, T-2, T-3]
+    T_ = [T]
+    N_ = [N, N-1, N-2, N-3, N-4]
     #LR_ = [LR*10, LR, LR/10]
     #SIMILARITY_THRESHOLD_ = [SIMILARITY_THRESHOLD, SIMILARITY_THRESHOLD-0.1, SIMILARITY_THRESHOLD-0.2]
 
-    
-    for n in N_:
-        for t in T_:
+
+    for t in T_:
+        for n in N_:
             for u in range(3):  # The training is unstable. We have to train 3x and get the greater result
                 #for lr in LR_:
                 #for st in SIMILARITY_THRESHOLD_:

@@ -474,7 +474,7 @@ def video2npy(video_path, path_to_save_npy, ten_crop, feature_extractor, gpu_id)
 
 	qtdFrames = countVideoFrames(os.path.join(video_path[0], video_path[1]))
 
-	maxVideoFrame = 1600	# Multiplo de NUM_FRAMES_IN_EACH_FEATURE_VECTOR
+	maxVideoFrame = 16000	# Multiplo de NUM_FRAMES_IN_EACH_FEATURE_VECTOR
 
 	i = 0
 	features_global = []
