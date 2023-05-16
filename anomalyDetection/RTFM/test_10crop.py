@@ -125,7 +125,7 @@ def getLabels(labels, list_test):
 
 def test(dataloader, model, args, viz, device, _, only_abnormal = False):
     ROOT_DIR = args.root
-    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-ssl-normalized-test.list")
+    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-normalized-test.list")
     LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
     
@@ -141,8 +141,8 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
         model.eval()
         pred = torch.zeros(0)
         pred = pred.cpu().detach()
-        device = 'cpu'
-        model.device = 'cpu'
+        device = 'cuda:0'
+        model.device = 'cuda:0'
         cont = 0
 
         video_index = -1

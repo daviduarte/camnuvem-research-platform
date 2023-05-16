@@ -35,7 +35,7 @@ def sanityCheck(args):
 if __name__ == '__main__':
 
 	#anomalyDetectionMethod = "RTFM"
-	anomalyDetectionMethod = "RTFM"
+	anomalyDetectionMethod = "WSAL"
 
 	args = option.parser.parse_args()
 	sanityCheck(args)
@@ -113,7 +113,6 @@ if __name__ == '__main__':
 	"""
 		Make the anomaly detection training
 	"""
-
 	if args.no_anomaly_detection == "False":
 
 		#test_list_file_final_name = args.test_list_file_final_name

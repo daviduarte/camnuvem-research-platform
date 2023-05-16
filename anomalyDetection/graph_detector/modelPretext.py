@@ -21,10 +21,8 @@ class ModelPretext():
 		elif self.model == "i3d":
 			print("Dimensões das feat out: ")
 
-			
 			resnet_ = resnet.i3_res50(400) # vanilla I3D ResNet50
 			ResnetHead = resnetHead.resnetHead(2048, self.num_feat_out, resnet_)		# Feat size
-			
 
 			return ResnetHead
 

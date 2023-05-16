@@ -198,7 +198,6 @@ def start(imgs, ten_crop, feature_extractor, gpu_id, model):
 		input_ = np.moveaxis(input_, [0,1,2,3,4], [2, 0, 1, 3, 4])	# b,c,t,h,w  # 10x3x32x224x224
 
 		input_ = input_.astype('float32')
-		print("kkk")
 		print(input_.shape)
 
 		input_ = torch.from_numpy(input_)
@@ -229,7 +228,7 @@ def start(imgs, ten_crop, feature_extractor, gpu_id, model):
 
 			print("Tamanho do input: ")
 			print(input_.element_size() * input_.nelement())
-			print("Tamanh do modelo");
+			print("Tamanh do modelo")
 			print(sys.getsizeof(net_c3d))
 			if input_.size()[0] == 10:
 				print("kkkk")

@@ -6,6 +6,8 @@ from .models import HOE_model
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from .dataset import dataset_h5_test
+import os
+import cv2
 
 DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado"
 #param labels A txt file path containing all test/anomaly frame level labels
@@ -16,6 +18,9 @@ def getLabels(labels, list_test):
     # TODO
     test_normal_folder = os.path.join(DATASET_DIR, "videos/samples/test/normal")
     test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
+
+    #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
+    i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
 
     with open(labels) as file:
         lines = file.readlines()
@@ -35,6 +40,7 @@ def getLabels(labels, list_test):
         # First we create an array with 'frame_qtd' zeros
         # Zeros represents the 
         cap = cv2.VideoCapture(video_path)
+
         frame_qtd = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         qtd_total_frame += frame_qtd
 
@@ -68,15 +74,36 @@ def getLabels(labels, list_test):
         lines = f.readlines()
         lines = [line.strip() for line in lines]
 
+    lines_i3d = []
+    with open(i3d_list_test) as f:
+        lines_i3d = f.readlines()
+        lines_i3d = [line.strip() for line in lines_i3d]
+
 
     list_ = []
     cont = 0
-    for path in lines:
+    for i in range(len(lines)):
+        path = lines[i]
+        
         cont+=1
         if cont <= anomaly_qtd:
             continue
         filename = os.path.basename(path)  
-        list_.append(os.path.join(test_normal_folder, filename[:-4]+'.mp4'))
+        filee = os.path.join(test_normal_folder, filename[:-4]+'.mp4')
+        
+
+        # SSHC WORKAROUND. V
+        print(filee)
+        if not os.path.exists(filee):
+            path = lines_i3d[i]
+            filename = os.path.basename(path)  
+            filee = os.path.join(test_normal_folder, filename[:-4]+'.mp4')
+            print("REntrou aki")
+            print(filee)
+
+        list_.append(filee)
+
+    
 
 
     # Lets get the normal videos
@@ -100,17 +127,19 @@ def getLabels(labels, list_test):
 
 
 def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal = False):
-    ROOT_DIR = args.root
-    list_ = os.path.join(ROOT_DIR, "../", "files/graph_detector_test_05s.list")
+    ROOT_DIR = args['root']
+    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-ssl-boxes+fea-normalized-test.list")
     LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
-    print(labels)
-    exit()
 
-    truncated_frame_qtd = int((max_sample_duration) * NUM_SAMPLE_FRAME)    # The video has max this num of frame
-    if len(video[1]) > truncated_frame_qtd:
-        video[1] = video[1][0:truncated_frame_qtd]                  # If needed, truncate it
 
+    #truncated_frame_qtd = int((200) * 75)    # The video has max this num of frame
+    truncated_frame_qtd = 100 * 30
+
+    #if len(video[1]) > truncated_frame_qtd:
+    #    video[1] = video[1][0:truncated_frame_qtd]                  # If needed, truncate it
+
+    gt = []
     with torch.no_grad():
         model.eval()
         pred_ = torch.zeros(0)
@@ -120,32 +149,35 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
         gpu_id = 0
         cont = 0
 
+        segment_size = args["segment_size"]
         for i, input in enumerate(dataloader):
+
+            video = labels[i]
 
             feat, pred, vid = input
             #feat = feat[0,:, 10]
 
-            print("feart antes da variable")
-            print(feat.shape)            
+            #print("feart antes da variable")
+            #print(feat.shape)            
             #if ten_crop:
             #    feat = np.squeeze(feat, axis=0)
 
-            print("feat antes da variable")
-            print(feat.shape)
+            #print("feat antes da variable")
+            #print(feat.shape)
             feat, pred = Variable(feat), Variable(pred)
-            print("feat DEPOIS da variable")
-            print(feat.shape)
+            #print("feat DEPOIS da variable")
+            #print(feat.shape)
 
             feat = feat.to(device)
             pred = pred.to(device)
             #pred = pred.cuda(gpu_id)
-            print(feat.shape)
+            #print(feat.shape)
             #print(pred.shape)
             #exit()
             score, fea = model(feat, device)
-            print("Shape da predicao: ")
-            print(score.shape)
-            print(fea.shape)
+            #print("Shape da predicao: ")
+            #print(score.shape)
+            #print(fea.shape)
             se_score = score.squeeze()  
 
             # se_score= spatial semantic
@@ -160,8 +192,8 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
                 fea = torch.unsqueeze(fea, 0)   # Add a diension at begining. 
 
             ano_score = torch.zeros_like(fea[0,:,0])
-            print(fea[0,:-1].shape)
-            print(fea[0,1:].shape)
+            #print(fea[0,:-1].shape)
+            #print(fea[0,1:].shape)
             ano_cos = torch.cosine_similarity(fea[0,:-1], fea[0,1:], dim=1)
 
             ano_score[:-1] += 1-ano_cos
@@ -190,10 +222,20 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
 
             #print(new_pred)
 
-            print("Shape da predicao depois dos paranaue: ")
-            print(ano_score_.shape)
+            #print("Shape da predicao depois dos paranaue: ")
+            #print(ano_score_.shape)
 
+            print("Shape ano_score: ")
+            print(ano_score.shape)
+            ano_score_ = ano_score_[:-1]          # Lets ignore the last segment, because it may be a incomplete segment (i.e. a segment made with less than 75 frames). 
+            shape_ = ano_score_.shape[0]
+            gt_ = video[1][0:(shape_)*16]
+            #gt_ = video[1]    
+            gt.extend(gt_)
 
+            if ano_score_.shape[0] * 16 != len(gt_):
+                print("Erro. A quantidade de labels tem que ser a mesma de samples")
+                exit()
             pred_ = torch.cat((pred_, ano_score_))
 
             #input = input.to(device)
@@ -212,14 +254,14 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
 
             #exit()
             cont += 1
-        print("Qtd todal de exemplos de testr: ")
-        print(cont)
+        #print("Qtd todal de exemplos de testr: ")
+        #print(cont)
         #exit()
 
         #if args.dataset == 'shanghai':
-        gt = np.load(gt_path)
+        #gt = np.load(gt_path)
         #elif args.dataset == 'camnuvem':
-        print("Carregando o gt da camnuvem")
+        #print("Carregando o gt da camnuvem")
         #    gt = np.load('list/gt-camnuvem.npy')
         #else:
         #    gt = np.load('list/gt-ucf.npy')
@@ -228,9 +270,9 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
         print(pred_.shape)        
 
         print("Quantidde total de frames no arquivo gt: ")
-        print(gt.shape)
+        print(len(gt))
 
-        print(pred_)
+        #print(pred_)
 
         pred = list(pred_.cpu().detach().numpy())
         pred = np.repeat(np.array(pred), args['segment_size'])
@@ -239,6 +281,8 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
         print("td do pred: ")
         print(pred.shape)
 
+        print(list(gt))
+        print(pred)
         fpr, tpr, threshold = roc_curve(list(gt), pred)
         if only_abnormal:            
             np.save('fpr_wsal_only_abnormal_ucf_10c.npy', fpr)
@@ -258,10 +302,14 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
         pr_auc = auc(recall, precision)
         np.save('precision.npy', precision)
         np.save('recall.npy', recall)
-        viz.plot_lines('pr_auc', pr_auc)
-        viz.plot_lines('auc', rec_auc)
-        viz.lines('scores', pred)
-        viz.lines('roc', tpr, fpr)
+        try:
+            viz.plot_lines('pr_auc', pr_auc)
+            viz.plot_lines('auc', rec_auc)
+            viz.lines('scores', pred)
+            viz.lines('roc', tpr, fpr)
+        except:
+            print("Viz desligado")
+
         return rec_auc
 
 
