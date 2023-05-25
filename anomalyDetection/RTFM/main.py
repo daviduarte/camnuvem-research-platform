@@ -77,7 +77,7 @@ def train(args):
     time.sleep(1)
 
     optimizer = optim.Adam(model.parameters(),
-                            lr=0.0001, eps=1e-3, weight_decay=0.005)
+                            lr=0.001, eps=1e-3, weight_decay=0.005)
 
     test_info = {"epoch": [], "test_AUC": []}
     best_AUC = -1

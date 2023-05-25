@@ -89,7 +89,6 @@ def get_activation(name):
 def loadImage():
     #image = PIL.Image.open("zidane.jpeg").convert('RGB').convert('RGB')
     image = cv2.imread("teste.png")
-    
 
     return image
 
@@ -296,7 +295,7 @@ def run():
 
     for t in T_:
         for n in N_:
-            for u in range(3):  # The training is unstable. We have to train 3x and get the greater result
+            for u in range(5):  # The training is unstable. We have to train 3x and get the greater result
                 #for lr in LR_:
                 #for st in SIMILARITY_THRESHOLD_:
                 T = t

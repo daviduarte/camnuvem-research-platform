@@ -230,7 +230,9 @@ def i3_res50(num_classes):
     net = I3Res50(num_classes=num_classes, use_nl=False)
 
     #state_dict = torch.load(os.path.join(ROOT_DIR, '../../extractI3d/pytorch-resnet3d/pretrained/i3d_r50_kinetics.pth'))
-    state_dict = torch.load(os.path.join(ROOT_DIR, '/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/graph_detector/results/i3d/pretext_task/t=16-n=5-lr=5e-06-st=0.7-2/model19190.pkl'))
+    #state_dict = torch.load(os.path.join(ROOT_DIR, '/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/graph_detector/results/i3d/pretext_task/t=16-n=5-lr=5e-06-st=0.7-2/model19190.pkl'))
+    state_dict = torch.load(os.path.join(ROOT_DIR, '/home/lecun/davi/camnuvem-reseach-plataform/pesquisa/anomalyDetection/graph_detector/results/i3d/pretext_task/t=16-n=1-lr=1e-06-st=0.65-0/model28785.pkl'))
+
 
     # Lets extract only the resnet weights
     new_dict = {}
@@ -239,7 +241,7 @@ def i3_res50(num_classes):
             new_dict[key[7:]] = state_dict[key]
 
     # uncomment this line when generating I3D from HCSSL
-    #state_dict = new_dict
+    state_dict = new_dict
 
     #print("kkk")
     #for key, value in state_dict.items() :

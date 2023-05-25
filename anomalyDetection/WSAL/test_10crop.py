@@ -9,7 +9,7 @@ from .dataset import dataset_h5_test
 import os
 import cv2
 
-DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado"
+DATASET_DIR = "/home/lecun/davi/CamNuvem_dataset_normalizado"
 #param labels A txt file path containing all test/anomaly frame level labels
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
 def getLabels(labels, list_test):
@@ -20,7 +20,7 @@ def getLabels(labels, list_test):
     test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
 
     #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
-    i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
+    i3d_list_test = "/home/lecun/davi/camnuvem-reseach-plataform/pesquisa/anomalyDetection/files/aux_yolov5.list"
 
     with open(labels) as file:
         lines = file.readlines()

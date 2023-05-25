@@ -1,7 +1,12 @@
 from pretext_models import modelPretextFCN
+import os
+
+from definitions import ROOT_DIR
 #from pretext_models import modelPretextYolov5
 import sys
-sys.path.append("/media/denis/dados/CamNuvem/pesquisa/extractI3d/pytorch-resnet3d/models")
+print("Root dir printado no pretextModwel.py")
+print(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR, "../../extractI3d/pytorch-resnet3d/models"))
 import resnet
 from other_models import resnetHead
 
