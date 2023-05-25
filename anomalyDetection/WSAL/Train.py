@@ -34,7 +34,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
     print("********************************")
     torch.cuda.empty_cache()
 
-    ver ='WSAL4'
+    ver ='WSAL'
 
     args = {"gt": gt, "segment_size": segment_size, "root": root}
 
@@ -76,9 +76,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
         auc1 = test(test_loader, model, args, viz, device, ten_crop, gt)
 
         auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
-        
-        print("Auc onmly obnomral? ")
-        print(auc2)
+        WSAL
         print(auc1)
         exit()
 
@@ -96,7 +94,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
         #test_loader = test_loader.cuda(gpu_id)
         #train_loader = train_loader.cuda(gpu_id)
 
-    optimizer = optim.Adagrad(model.parameters(), lr=0.001) # original é 0.001
+    optimizer = optim.Adagrad(model.parameters(), lr=0.00005) # original é 0.001
     opt_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[300,400], gamma=0.5)
     start_epoch = 0
         
