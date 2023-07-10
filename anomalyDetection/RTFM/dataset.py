@@ -47,8 +47,8 @@ class Dataset(data.Dataset):
 
         # If we want test only in anomaly videos
         if self.test_mode is True and self.only_anomaly is True:
-            self.list = self.list[0:140]  # The anomaly videos is 0 to 49
-            #self.list = self.list[0:49]  # The anomaly videos is 0 to 49
+            self.list = self.list[0:140]  # The anomaly videos is 0 to 49  UCF CRIME
+            #self.list = self.list[0:49]  # The anomaly videos is 0 to 49    CAMNUVEM 
 
             return
 
@@ -78,23 +78,24 @@ class Dataset(data.Dataset):
             elif self.dataset == 'camnuvem'                    :
             """
             if self.is_normal:
-                #self.list = self.list[437:]
-                self.list = self.list[810:]
+                #self.list = self.list[437:]    #CamNuvem
+                self.list = self.list[810:]     # UCF Crime
                 #print('normal list for CamNuvem')
                 #print(self.list)
             else:
-                #self.list = self.list[:437]
-                self.list = self.list[:810]
+                #self.list = self.list[:437]    # CamNuvem
+                self.list = self.list[:810]     # UCF Crime
                 #print('abnormal list for CamNuvem')
                 #print(self.list)                    
 
     def __getitem__(self, index):
 
         label = self.get_label()  # get video level label 0/1
+
         features = np.load(self.list[index].strip('\n'), allow_pickle=True)
         
         features = np.array(features, dtype=np.float32)
-        
+
         
 
         #print(features.shape)

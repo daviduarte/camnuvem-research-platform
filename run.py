@@ -173,7 +173,6 @@ if __name__ == '__main__':
 			# Let's create a file only with test abnormal samples, to enable us to create a AUC chart with just the abnormal videos
 			make_gt_camnuvem_dataset.start(num_frames_in_each_feature_vector, teste_only_abnormal_file_final_name, args.test_labels, video_root_test_abnormal, video_root_test_normal, gt_output_anomaly_only)
 
-
 		if anomalyDetectionMethod == "RTFM":
 			
 
