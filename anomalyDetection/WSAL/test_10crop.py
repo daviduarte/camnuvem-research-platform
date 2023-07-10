@@ -9,7 +9,8 @@ from .dataset import dataset_h5_test
 import os
 import cv2
 
-DATASET_DIR = "/home/lecun/davi/CamNuvem_dataset_normalizado"
+#DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado"
+DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/ucf_crime_dataset"
 #param labels A txt file path containing all test/anomaly frame level labels
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
 def getLabels(labels, list_test):
@@ -20,7 +21,7 @@ def getLabels(labels, list_test):
     test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
 
     #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
-    i3d_list_test = "/home/lecun/davi/camnuvem-reseach-plataform/pesquisa/anomalyDetection/files/aux_yolov5.list"
+    i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
 
     with open(labels) as file:
         lines = file.readlines()
@@ -128,7 +129,8 @@ def getLabels(labels, list_test):
 
 def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal = False):
     ROOT_DIR = args['root']
-    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-ssl-boxes+fea-normalized-test.list")
+    #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-ssl-boxes+fea-normalized-test.list")
+    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
     LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
 
@@ -285,11 +287,11 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
         print(pred)
         fpr, tpr, threshold = roc_curve(list(gt), pred)
         if only_abnormal:            
-            np.save('fpr_wsal_only_abnormal_ucf_10c.npy', fpr)
-            np.save('tpr_wsal_only_abnormal_ucf_10c.npy', tpr)
+            np.save('fpr_wsal_only_abnormal_camnuvem_10c.npy', fpr)
+            np.save('tpr_wsal_only_abnormal_camnuvem_10c.npy', tpr)
         else:
-            np.save('fpr_wsal_ucf_10c.npy', fpr)
-            np.save('tpr_wsal_ucf_10c.npy', tpr)
+            np.save('fpr_wsal_camnuvem_10c.npy', fpr)
+            np.save('tpr_wsal_camnuvem_10c.npy', tpr)
 
         rec_auc = auc(fpr, tpr)
         print('auc : ' + str(rec_auc))

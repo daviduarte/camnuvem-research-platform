@@ -18,7 +18,8 @@ def run(root, list_test, list_training, ten_crop, arquivo_train, arquivo_test):
 
 
 	iter = [list_test, list_training]
-	offset = [49, 437]
+	#offset = [49, 437]	# Camnuvem
+	offset = [140, 810]	# UCF crime
 
 	#if ten_crop == True:
 	#	arquivo_train = "pesquisa/anomalyDetection/files/data_train_10crop.h5"

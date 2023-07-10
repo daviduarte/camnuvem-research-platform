@@ -76,8 +76,9 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
         auc1 = test(test_loader, model, args, viz, device, ten_crop, gt)
 
         auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
-        WSAL
+    
         print(auc1)
+        print(auc2)
         exit()
 
     criterion = torch.nn.CrossEntropyLoss(reduction = 'none')

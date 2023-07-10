@@ -6,7 +6,8 @@ import os
 import cv2
 #torch.set_default_tensor_type('torch.FloatTensor')
 
-DATASET_DIR = "/home/lecun/davi/CamNuvem_dataset_normalizado"
+#DATASET_DIR = "/home/lecun/davi/CamNuvem_dataset_normalizado"
+DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/ucf_crime_dataset"
 #param labels A txt file path containing all test/anomaly frame level labels
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
 def getLabels(labels, list_test):
@@ -17,7 +18,7 @@ def getLabels(labels, list_test):
     test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
 
     #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
-    i3d_list_test = "/home/lecun/davi/camnuvem-reseach-plataform/pesquisa/anomalyDetection/files/aux_yolov5.list"
+    i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
 
     with open(labels) as file:
         lines = file.readlines()
@@ -125,9 +126,12 @@ def getLabels(labels, list_test):
 
 def test(dataloader, model, args, viz, device, _, only_abnormal = False):
     ROOT_DIR = args.root
-    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-normalized-test.list")
+    #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-normalized-test.list")
+    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
     LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
+    print(len(labels))
+    
     
     #truncated_frame_qtd = int((200) * 75)    # The video has max this num of frame
     truncated_frame_qtd = 100 * 30
@@ -154,6 +158,7 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
         truncated_frame_qtd = 200 * segment_size
         for i, input in enumerate(dataloader):
 
+
             #if cont2 == len_video:
             #video_index += 1
             video = labels[i]
@@ -170,6 +175,7 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
             #print("Valorr do input antes da rede")
             #print(input.shape)
             #print(input.type())
+
 
             score_abnormal, score_normal, feat_select_abn, feat_select_normal, feat_abn_bottom, feat_select_normal_bottom, logits, \
             scores_nor_bottom, scores_nor_abn_bag, feat_magnitudes = model(inputs=input)
@@ -189,6 +195,8 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
             #gt_ = video[1]    
             gt.extend(gt_)
 
+
+
             print(sig.shape)
             print(len(gt_))
             if sig.shape[0] * 16 != len(gt_):
@@ -196,9 +204,10 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
                 exit()
             pred = torch.cat((pred, sig))
 
-            with open("vis/"+str(cont)+".txt", 'w') as file:
-                for i in pred:
-                    file.write(str(i)+"")            
+
+            #with open("vis/"+str(cont)+".txt", 'w') as file:
+            #    for i in pred:
+            #        file.write(str(i)+"")            
 
             #print("Shape do logit: ")
             #print(logits.shape)
@@ -210,6 +219,7 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
             torch.cuda.empty_cache()
 
             cont2 += 16
+
         #print("Qtd todal de exemplos de testr: ")
         #print(cont)
         #exit()
@@ -234,11 +244,11 @@ def test(dataloader, model, args, viz, device, _, only_abnormal = False):
         fpr, tpr, threshold = roc_curve(list(gt), pred)
 
         if only_abnormal:            
-            np.save('fpr_rtfm_only_abnormal_ucf_10c.npy', fpr)
-            np.save('tpr_rtfm_only_abnormal_ucf_10c.npy', tpr)
+            np.save('fpr_rtfm_only_abnormal_camnuvem.npy', fpr)
+            np.save('tpr_rtfm_only_abnormal_camnuvem.npy', tpr)
         else:
-            np.save('fpr_rtfm_ucf_10c.npy', fpr)
-            np.save('tpr_rtfm_ucf_10c.npy', tpr)
+            np.save('fpr_rtfm_camnuvem.npy', fpr)
+            np.save('tpr_rtfm_camnuvem.npy', tpr)
 
         rec_auc = auc(fpr, tpr)
         print('auc : ' + str(rec_auc))

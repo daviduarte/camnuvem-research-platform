@@ -88,7 +88,7 @@ def train(args):
 
     contzera = 0
     for step in tqdm(
-            range(1, args.max_epoch + 1),
+            range(1, 1500 + 1),
             total=args.max_epoch,
             dynamic_ncols=True
     ):
