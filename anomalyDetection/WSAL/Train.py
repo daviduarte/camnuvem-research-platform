@@ -76,8 +76,9 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
         auc1 = test(test_loader, model, args, viz, device, ten_crop, gt)
 
         auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
-        WSAL
+        
         print(auc1)
+        print(auc2)
         exit()
 
     criterion = torch.nn.CrossEntropyLoss(reduction = 'none')
@@ -94,7 +95,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
         #test_loader = test_loader.cuda(gpu_id)
         #train_loader = train_loader.cuda(gpu_id)
 
-    optimizer = optim.Adagrad(model.parameters(), lr=0.00005) # original é 0.001
+    optimizer = optim.Adagrad(model.parameters(), lr=0.0001) # original é 0.001
     opt_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[300,400], gamma=0.5)
     start_epoch = 0
         
@@ -117,7 +118,8 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
     # Before training let's get the AUC
     best_auc = 0
     auc = test(test_loader, model, args, viz, device, ten_crop, gt)
-    for epoch in range(start_epoch, 5000):
+    auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
+    for epoch in range(start_epoch, 75):
        
         end = time.time()
         pbar = tqdm(total=len(train_loader))
@@ -229,6 +231,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
         if epoch%5==0:
             
             auc = test(test_loader, model, args, viz, device, ten_crop, gt)
+            auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
 
             state = {
               'epoch': epoch,
@@ -239,7 +242,7 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
             if auc > best_auc:
                 best_auc = auc
                 torch.save(state, model_path+"rgb_%d.pth" % epoch)
-                save_best_record(best_auc, epoch, model_path+"rgb_%d.txt" % epoch)
+                save_best_record(best_auc, auc2, epoch, model_path+"rgb_%d.txt" % epoch)
 
             # model = model.cuda(gpu_id)
         # if epoch%25==0:

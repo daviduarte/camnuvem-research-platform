@@ -69,8 +69,8 @@ class dataset_h5(torch.utils.data.Dataset):
 
 
     def __getitem__(self, index):
-        #normalAnomalyDivision = 810
-        normalAnomalyDivision = 433
+        normalAnomalyDivision = 810
+        #normalAnomalyDivision = 433
         nvid = self.__nvid__[index]
         #print(nvid)
         ind = (index+randint(0, normalAnomalyDivision-1))%normalAnomalyDivision
@@ -180,7 +180,8 @@ class dataset_h5_test(torch.utils.data.Dataset):
         self.__vid__=[]
 
         if self.only_anomaly == True:
-            videos = videos[0:140]
+            videos = videos[0:140]  # UCF
+            #videos = videos[0:49]   # CamNuvem
         print(len(videos))
 
 

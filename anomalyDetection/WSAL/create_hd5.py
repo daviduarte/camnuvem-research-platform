@@ -16,9 +16,9 @@ def run(root, list_test, list_training, ten_crop, arquivo_train, arquivo_test):
 	dest_test_anomaly = "/home/denis/Documentos/CamNuvem/dataset/CamNuvem_dataset_normalizado/videos/samples/test/anomaly/"
 	"""
 
-
 	iter = [list_test, list_training]
-	offset = [49, 437]
+	#offset = [49, 437]
+	offset = [140, 810]
 
 	#if ten_crop == True:
 	#	arquivo_train = "pesquisa/anomalyDetection/files/data_train_10crop.h5"

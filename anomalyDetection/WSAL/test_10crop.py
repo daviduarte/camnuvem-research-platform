@@ -9,7 +9,7 @@ from .dataset import dataset_h5_test
 import os
 import cv2
 
-DATASET_DIR = "/home/lecun/davi/CamNuvem_dataset_normalizado"
+DATASET_DIR = "/home/lecun/davi/ucf_crime_dataset"
 #param labels A txt file path containing all test/anomaly frame level labels
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
 def getLabels(labels, list_test):
@@ -128,7 +128,7 @@ def getLabels(labels, list_test):
 
 def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal = False):
     ROOT_DIR = args['root']
-    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-ssl-boxes+fea-normalized-test.list")
+    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-ssl-boxes+fea-standarized-test.list")
     LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
     labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
 
@@ -303,10 +303,13 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
         np.save('precision.npy', precision)
         np.save('recall.npy', recall)
         try:
-            viz.plot_lines('pr_auc', pr_auc)
-            viz.plot_lines('auc', rec_auc)
-            viz.lines('scores', pred)
-            viz.lines('roc', tpr, fpr)
+            if only_abnormal == False:
+                viz.plot_lines('pr_auc', pr_auc)
+                viz.plot_lines('auc', rec_auc)
+                viz.lines('scores', pred)
+                viz.lines('roc', tpr, fpr)
+            else:
+                viz.plot_lines('auc only abnormal', rec_auc)                
         except:
             print("Viz desligado")
 

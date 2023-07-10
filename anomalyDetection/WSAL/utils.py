@@ -115,8 +115,9 @@ class Visualizer(object):
     def scatter(self, name, data):
         self.vis.scatter(X=data, win=name)    
 
-def save_best_record(auc, epoch, file_path):
+def save_best_record(auc, auc2, epoch, file_path):
     fo = open(file_path, "w")
     fo.write("epoch: {}\n".format(epoch))
     fo.write(str(auc))
+    fo.write("\n"+str(auc2))
     fo.close()        

@@ -79,16 +79,17 @@ def train(args):
     optimizer = optim.Adam(model.parameters(),
                             lr=0.001, eps=1e-3, weight_decay=0.005)
 
-    test_info = {"epoch": [], "test_AUC": []}
+    test_info = {"epoch": [], "test_AUC": [], "test_AUC_only_abnormal": []}
     best_AUC = -1
     output_path = './anomalyDetection/RTFM/ckpt'   # put your own path here
     print("Entrando no test")
     #time.sleep(3)
     auc = test(test_loader, model, args, viz, device, args.gt)
+    auc2 = test(test_loader_only_anomaly, model, args, viz, device, args.gt_only_anomaly, only_abnormal=True)
 
     contzera = 0
     for step in tqdm(
-            range(1, args.max_epoch + 1),
+            range(1, 1500 + 1),
             total=args.max_epoch,
             dynamic_ncols=True
     ):
@@ -109,8 +110,11 @@ def train(args):
         if step % 50 == 0 and step > 10:
 
             auc = test(test_loader, model, args, viz, device, args.gt)
+            auc2 = test(test_loader_only_anomaly, model, args, viz, device, args.gt_only_anomaly, only_abnormal=True)
+            
             test_info["epoch"].append(step)
             test_info["test_AUC"].append(auc)
+            test_info["test_AUC_only_abnormal"].append(auc2)
 
             if test_info["test_AUC"][-1] > best_AUC:
                 best_AUC = test_info["test_AUC"][-1]

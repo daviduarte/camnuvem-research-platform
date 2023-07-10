@@ -231,39 +231,39 @@ def train(save_folder):
                 print("Ok, temos cache, vamos carregar")
                 data = np.load(data_path, allow_pickle=True)
 
-            if data == -1:
+            if data != -1:
                 print("Continuing because there aren't a object in the first frame ")
-                continue
+                #continue
 
-            #print("\n\nPRINTANDO IMAGEM!!@!!\n\n")
-            #print_image(input, box_list, object_path, step)
+                #print("\n\nPRINTANDO IMAGEM!!@!!\n\n")
+                #print_image(input, box_list, object_path, step)
 
-            data = [torch.from_numpy(data[0]).to(DEVICE), torch.from_numpy(data[1]).to(DEVICE)]
-            input, target = data       
-            input = input.to(DEVICE)
-            target = target.to(DEVICE)
-            if model_used == 'i3d':
-                print("POOOOOOOOORRA")
-                print(input_frames.shape)
-                input_frames = {'frames': input_frames}
-                output = model(input_frames)
-            else:
-                output = model(input)
+                data = [torch.from_numpy(data[0]).to(DEVICE), torch.from_numpy(data[1]).to(DEVICE)]
+                input, target = data       
+                input = input.to(DEVICE)
+                target = target.to(DEVICE)
+                if model_used == 'i3d':
+                    print("POOOOOOOOORRA")
+                    print(input_frames.shape)
+                    input_frames = {'frames': input_frames}
+                    output = model(input_frames)
+                else:
+                    output = model(input)
 
-            print(output.shape)    
+                print(output.shape)    
 
-            loss_ = loss(output, target)
-            #viz.plot_lines('loss', cost.item())
-            optimizer.zero_grad()
-            loss_.backward()
-            optimizer.step()
+                loss_ = loss(output, target)
+                #viz.plot_lines('loss', cost.item())
+                optimizer.zero_grad()
+                loss_.backward()
+                optimizer.step()
 
-            #viz.plot_lines('training_loss', loss_.item())
+                #viz.plot_lines('training_loss', loss_.item())
 
-            trining_log.write(str(loss_.item()) + " ")
+                trining_log.write(str(loss_.item()) + " ")
 
-            #print("Step: " + str(step))
-            #print("data loader: " + str(len(data_loader)))
+                print("\n\nStep!!!!!!!!!!: " + str(step))
+                #print("data loader: " + str(len(data_loader)))
 
             if step % len(data_loader) == 0 and step > 1:
                 trining_log.flush()
