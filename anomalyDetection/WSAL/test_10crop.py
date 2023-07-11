@@ -10,15 +10,15 @@ import os
 import cv2
 
 #DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado"
-DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/ucf_crime_dataset"
+#DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/ucf_crime_dataset"
 #param labels A txt file path containing all test/anomaly frame level labels
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
-def getLabels(labels, list_test):
-
+def getLabels(dataset_dir, labels, list_test):
+    
     # Colocar isso no config.ini depois
     # TODO
-    test_normal_folder = os.path.join(DATASET_DIR, "videos/samples/test/normal")
-    test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
+    test_normal_folder = os.path.join(dataset_dir, "videos/samples/test/normal")
+    test_anomaly_folder = os.path.join(dataset_dir, "videos/samples/test/anomaly")
 
     #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
     i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
@@ -127,19 +127,15 @@ def getLabels(labels, list_test):
     return gt
 
 
-def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal = False):
+def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, ten_crop, only_abnormal = False):
     ROOT_DIR = args['root']
+    dataset_dir = os.path.join(ROOT_DIR, "dataset", datasetInfos[2])
     #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-ssl-boxes+fea-normalized-test.list")
-    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
-    LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
-    labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
+    #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
+    LABELS_PATH = os.path.join(dataset_dir, "videos/labels/test.txt")
+    print(videos_pkl_test)
 
-
-    #truncated_frame_qtd = int((200) * 75)    # The video has max this num of frame
-    truncated_frame_qtd = 100 * 30
-
-    #if len(video[1]) > truncated_frame_qtd:
-    #    video[1] = video[1][0:truncated_frame_qtd]                  # If needed, truncate it
+    labels = getLabels(dataset_dir, LABELS_PATH, videos_pkl_test) # 2d matrix containing the frame-level frame (columns) for each video (lines)
 
     gt = []
     with torch.no_grad():
@@ -147,8 +143,6 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
         pred_ = torch.zeros(0)
         pred_ = pred_.cpu()
 
-
-        gpu_id = 0
         cont = 0
 
         segment_size = args["segment_size"]
@@ -227,8 +221,6 @@ def test(dataloader, model, args, viz, device, ten_crop, gt_path, only_abnormal 
             #print("Shape da predicao depois dos paranaue: ")
             #print(ano_score_.shape)
 
-            print("Shape ano_score: ")
-            print(ano_score.shape)
             ano_score_ = ano_score_[:-1]          # Lets ignore the last segment, because it may be a incomplete segment (i.e. a segment made with less than 75 frames). 
             shape_ = ano_score_.shape[0]
             gt_ = video[1][0:(shape_)*16]

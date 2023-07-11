@@ -30,6 +30,10 @@ parser.add_argument('--feature-root-train-normal', help="Path where the resultin
 
 parser.add_argument('--segment-size', type=int, help="How much frames to use to extract the feature vector?", default=16)
 
+parser.add_argument('--anomaly-detection-method', help="What method do you would like to train/test? ", default='RTFM')
+
+parser.add_argument('--dataset', help="What dataset would you like to use? camnuvem or ucf-crime", default='camnuvem')
+
 
 # For create list files for RTFM
 parser.add_argument('--make-list-file', help="Make the file .list with the path of abnormal and normal train and test files.", default="False")
@@ -44,10 +48,8 @@ parser.add_argument('--training-list-file-final-name', help="What is the complet
 parser.add_argument('--make-hd5-file', help="Make Hd5 files?", default="False")
 
 # Create ground truth
-parser.add_argument('--make-gt', help="Make ground truth file for test videos.", default="False")
 parser.add_argument('--test-labels', help="The file containing all frame-level anomaly in test videos.", default="False")
 
-parser.add_argument('--gt-only-anomaly', default='False', help='file of ground truth ')
 
 # Args from RTFM
 #parser = argparse.ArgumentParser(description='RTFM')
@@ -56,7 +58,6 @@ parser.add_argument('--feature-size', type=int, default=2048, help='size of feat
 parser.add_argument('--modality', default='RGB', help='the type of the input, RGB,AUDIO, or MIX')
 parser.add_argument('--rgb-list', default='list/camnuvem-i3d-train-10crop.list', help='list of rgb features ')
 parser.add_argument('--test-rgb-list', default='list/camnuvem-i3d-test-10crop.list', help='list of test rgb features ')
-parser.add_argument('--gt', default='False', help='file of ground truth ')
 parser.add_argument('--gpus', default=1, type=int, choices=[0], help='gpus')
 parser.add_argument('--lr', type=str, default='[0.001]*15000', help='learning rates for steps(list form)')
 parser.add_argument('--batch-size', type=int, default=16, help='number of instances in a batch of data (default: 16)')
@@ -64,7 +65,6 @@ parser.add_argument('--workers', default=8, help='number of workers in dataloade
 parser.add_argument('--model-name', default='rtfm', help='name to save model')
 parser.add_argument('--pretrained-ckpt', default=None, help='ckpt for pretrained model')
 parser.add_argument('--num-classes', type=int, default=1, help='number of class')
-parser.add_argument('--dataset', default='camnuvem', help='dataset to train on (default: )')
 parser.add_argument('--plot-freq', type=int, default=10, help='frequency of plotting (default: 10)')
 parser.add_argument('--max-epoch', type=int, default=5000, help='maximum iteration to train (default: 500)')
 

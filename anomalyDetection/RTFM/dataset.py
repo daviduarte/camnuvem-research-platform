@@ -7,8 +7,9 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
 class Dataset(data.Dataset):
-    def __init__(self, args, is_normal=True, transform=None, test_mode=False, only_anomaly=False):
+    def __init__(self, args, datasetInfos, is_normal=True, transform=None, test_mode=False, only_anomaly=False):
         self.args = args
+        self.datasetInfos = datasetInfos
         self.modality = args.modality
         self.is_normal = is_normal
         self.dataset = args.dataset
@@ -47,7 +48,8 @@ class Dataset(data.Dataset):
 
         # If we want test only in anomaly videos
         if self.test_mode is True and self.only_anomaly is True:
-            self.list = self.list[0:140]  # The anomaly videos is 0 to 49  UCF CRIME
+            self.list = self.list[0:self.datasetInfos[0]]   # 140 for UCF-Crime or 49 for CamNuvem. Confifure your own dataser on datasetConfig.py
+            #self.list = self.list[0:140]  # The anomaly videos is 0 to 49  UCF CRIME
             #self.list = self.list[0:49]  # The anomaly videos is 0 to 49    CAMNUVEM 
 
             return
@@ -79,12 +81,14 @@ class Dataset(data.Dataset):
             """
             if self.is_normal:
                 #self.list = self.list[437:]    #CamNuvem
-                self.list = self.list[810:]     # UCF Crime
+                self.list = self.list[self.datasetInfos[1]:]
+                #self.list = self.list[810:]     # UCF Crime
                 #print('normal list for CamNuvem')
                 #print(self.list)
             else:
                 #self.list = self.list[:437]    # CamNuvem
-                self.list = self.list[:810]     # UCF Crime
+                self.list = self.list[:self.datasetInfos[1]]     # UCF Crime
+                #self.list = self.list[:810]     # UCF Crime
                 #print('abnormal list for CamNuvem')
                 #print(self.list)                    
 

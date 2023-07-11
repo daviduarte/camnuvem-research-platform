@@ -17,7 +17,7 @@ from feature_extractors.tsm import init_model as TSM
 current_dir = os.getcwd()
 print(os.path.join(current_dir, 'anomalyDetection/graph_detector'))
 sys.path.append(os.path.join(current_dir, 'anomalyDetection/graph_detector'))
-import temporalGraph
+
 
 
 ROOT_DIR = os.path.abspath(os.curdir)
@@ -152,19 +152,6 @@ def chooseModel(feature_extractor, gpu_id):
 	elif feature_extractor == 'i3d':
 		return resnet.i3_res50(400) # vanilla I3D ResNet50
 
-	elif feature_extractor == "sshc":
-		input = []
-
-		buffer_size = 1		# Just used for buffer. Not used here
-		DEVICE = "cuda:0"
-		OBJECTS_ALLOWED = [1,2,3,4]    # COCO categories ID allowed. The othwers will be discarded
-		N = 5
-		STRIDE = -1			# Not used here
-
-		temporal_graph = temporalGraph.TemporalGraph(DEVICE, buffer_size, OBJECTS_ALLOWED, N, STRIDE)
-		return temporal_graph
-		
-
 # img tem  (B, 3, 224, 224)
 def start(imgs, ten_crop, feature_extractor, gpu_id, model):
 
@@ -282,16 +269,6 @@ def start(imgs, ten_crop, feature_extractor, gpu_id, model):
 			output = net_tsm(input_)
 			output = output.detach().cpu().numpy() 
 			print(output.shape)
-
-		elif feature_extractor == 'sshc':
-			folder_index = 0	# Just used for buffer. Not used here
-			sample_index = 0	# Just used for buffer. Not used here
-			print("kkk")
-			print(input_.shape)			
-			adj_mat, bbox_fea_list, box_list, score_list = model.frames2temporalGraph(input_, folder_index, sample_index)
-			print(bbox_fea_list)
-			print("foi ;)")
-			exit()
 
 		feature_vector.append(output)
 

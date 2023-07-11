@@ -17,26 +17,26 @@ import time
 
 viz = Visualizer(env='RTFM', use_incoming_socket=False)
 
-def train(args):
+def train(args, test_list_file_final_name, datasetInfos):
 
     config = Config(args) 
 
     print("Carregando o train n_loader")
-    train_nloader = DataLoader(Dataset(args, test_mode=False, is_normal=True),
+    train_nloader = DataLoader(Dataset(args, datasetInfos, test_mode=False, is_normal=True),
                                batch_size=args.batch_size, shuffle=False,
                                num_workers=0, pin_memory=False, drop_last=True)
 
     print("Carregando o train a_loader")
-    train_aloader = DataLoader(Dataset(args, test_mode=False, is_normal=False),
+    train_aloader = DataLoader(Dataset(args, datasetInfos, test_mode=False, is_normal=False),
                                batch_size=args.batch_size, shuffle=False,
                                num_workers=0, pin_memory=False, drop_last=True)
 
     print("Carregando o test_loader")
-    test_loader = DataLoader(Dataset(args, test_mode=True),
+    test_loader = DataLoader(Dataset(args, datasetInfos, test_mode=True),
                               batch_size=1, shuffle=False,
                               num_workers=0, pin_memory=False)
 
-    test_loader_only_anomaly = DataLoader(Dataset(args, test_mode=True, only_anomaly=True),        # Test mode with only anomaly videos
+    test_loader_only_anomaly = DataLoader(Dataset(args, datasetInfos, test_mode=True, only_anomaly=True),        # Test mode with only anomaly videos
                               batch_size=1, shuffle=False,
                               num_workers=0, pin_memory=False)    
 
@@ -56,10 +56,10 @@ def train(args):
         model.load_state_dict(torch.load(args.checkpoint, map_location='cuda:0'))
 
         # Test
-        auc1 = test(test_loader, model, args, viz, device, args.gt)
+        auc1 = test(datasetInfos, test_list_file_final_name, test_loader, model, args, viz, device)
 
         # Test now with only the anomaly videos
-        auc2 = test(test_loader_only_anomaly, model, args, viz, device, args.gt_only_anomaly, only_abnormal=True)
+        auc2 = test(datasetInfos, test_list_file_final_name, test_loader_only_anomaly, model, args, viz, device, only_abnormal=True)
 
         print("auc1: ")
         print(auc1)
@@ -84,8 +84,8 @@ def train(args):
     output_path = './anomalyDetection/RTFM/ckpt'   # put your own path here
     print("Entrando no test")
     #time.sleep(3)
-    auc = test(test_loader, model, args, viz, device, args.gt)
-    auc2 = test(test_loader_only_anomaly, model, args, viz, device, args.gt_only_anomaly, only_abnormal=True)
+    auc = test(datasetInfos, test_list_file_final_name, test_loader, model, args, viz, device)
+    auc2 = test(datasetInfos, test_list_file_final_name, test_loader_only_anomaly, model, args, viz, device, only_abnormal=True)
 
     contzera = 0
     for step in tqdm(
@@ -109,8 +109,8 @@ def train(args):
         contzera += 1
         if step % 50 == 0 and step > 10:
 
-            auc = test(test_loader, model, args, viz, device, args.gt)
-            auc2 = test(test_loader_only_anomaly, model, args, viz, device, args.gt_only_anomaly, only_abnormal=True)
+            auc = test(datasetInfos, test_list_file_final_name, test_loader, model, args, viz, device)
+            auc2 = test(datasetInfos, test_list_file_final_name, test_loader_only_anomaly, model, args, viz, device, only_abnormal=True)
             
             test_info["epoch"].append(step)
             test_info["test_AUC"].append(auc)

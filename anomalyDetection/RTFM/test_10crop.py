@@ -7,15 +7,14 @@ import cv2
 #torch.set_default_tensor_type('torch.FloatTensor')
 
 #DATASET_DIR = "/home/lecun/davi/CamNuvem_dataset_normalizado"
-DATASET_DIR = "/media/denis/dados/CamNuvem/dataset/ucf_crime_dataset"
 #param labels A txt file path containing all test/anomaly frame level labels
 #param list A txt file path containing all absolut path of every test file (normal and anomaly)
-def getLabels(labels, list_test):
+def getLabels(dataset_dir, labels, list_test):
 
     # Colocar isso no config.ini depois
     # TODO
-    test_normal_folder = os.path.join(DATASET_DIR, "videos/samples/test/normal")
-    test_anomaly_folder = os.path.join(DATASET_DIR, "videos/samples/test/anomaly")
+    test_normal_folder = os.path.join(dataset_dir, "videos/samples/test/normal")
+    test_anomaly_folder = os.path.join(dataset_dir, "videos/samples/test/anomaly")
 
     #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
     i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
@@ -124,12 +123,15 @@ def getLabels(labels, list_test):
     return gt
 
 
-def test(dataloader, model, args, viz, device, _, only_abnormal = False):
+def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, only_abnormal = False):
     ROOT_DIR = args.root
+    dataset_dir = os.path.join(ROOT_DIR, "dataset", datasetInfos[2])
+
     #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-normalized-test.list")
-    list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
-    LABELS_PATH = os.path.join(DATASET_DIR, "videos/labels/test.txt")
-    labels = getLabels(LABELS_PATH, list_) # 2d matrix containing the frame-level frame (columns) for each video (lines)
+    #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
+    
+    LABELS_PATH = os.path.join(dataset_dir, "videos/labels/test.txt")
+    labels = getLabels(dataset_dir, LABELS_PATH, videos_pkl_test) # 2d matrix containing the frame-level frame (columns) for each video (lines)
     print(len(labels))
     
     

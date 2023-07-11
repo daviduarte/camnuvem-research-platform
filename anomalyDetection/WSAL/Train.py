@@ -30,13 +30,13 @@ from .dataset import dataset_h5_test
 viz = Visualizer(env='WSAL i3d 10crop', use_incoming_socket=False)
 
 
-def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_test, gt, segment_size, root, ten_crop, gpu_id, checkpoint, gt_only_anomaly):
+def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_test, segment_size, root, ten_crop, gpu_id, checkpoint, datasetInfos):
     print("********************************")
     torch.cuda.empty_cache()
 
     ver ='WSAL'
 
-    args = {"gt": gt, "segment_size": segment_size, "root": root}
+    args = {"segment_size": segment_size, "root": root}
 
     #mask_path = "./arquivos/mask.h5"
 
@@ -55,27 +55,23 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
 
     device = torch.device(gpu_id)
 
-    train_loader = torch.utils.data.DataLoader(dataset_h5(videos_pkl_train, hdf5_path_train, ten_crop),
+    train_loader = torch.utils.data.DataLoader(dataset_h5(datasetInfos, videos_pkl_train, hdf5_path_train, ten_crop),
                                                     batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=False, drop_last=True)
 
-    test_loader = DataLoader(dataset_h5_test(videos_pkl_test, hdf5_path_test, ten_crop), pin_memory=False)    
+    test_loader = DataLoader(dataset_h5_test(datasetInfos, videos_pkl_test, hdf5_path_test, ten_crop), pin_memory=False)    
 
-    test_loader_only_anomaly = DataLoader(dataset_h5_test(videos_pkl_test, hdf5_path_test, ten_crop, only_anomaly=True), pin_memory=False)
+    test_loader_only_anomaly = DataLoader(dataset_h5_test(datasetInfos, videos_pkl_test, hdf5_path_test, ten_crop, only_anomaly=True), pin_memory=False)
 
     model = HOE_model(nfeat=features, nclass=1, ten_crop = ten_crop)
     model = model.to(device)
-
-    print(checkpoint)
-    print("mano")
 
     if checkpoint != "False":    
         checkpoint = torch.load(checkpoint, map_location='cuda:0')
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
-        print("********************************88")
-        auc1 = test(test_loader, model, args, viz, device, ten_crop, gt)
+        auc1 = test(datasetInfos, videos_pkl_test, test_loader, model, args, viz, device, ten_crop)
 
-        auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
+        auc2 = test(datasetInfos, videos_pkl_test, test_loader_only_anomaly, model, args, viz, device, ten_crop, only_abnormal=True)
         print(auc1)
         print(auc2)
         exit()
@@ -116,8 +112,8 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
 
     # Before training let's get the AUC
     best_auc = 0
-    auc = test(test_loader, model, args, viz, device, ten_crop, gt)
-    auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
+    auc = test(datasetInfos, videos_pkl_test, test_loader, model, args, viz, device, ten_crop)
+    auc2 = test(datasetInfos, videos_pkl_test, test_loader_only_anomaly, model, args, viz, device, ten_crop, only_abnormal=True)
     for epoch in range(start_epoch, 75):
        
         end = time.time()
@@ -229,8 +225,8 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
 
         if epoch%5==0:
             
-            auc = test(test_loader, model, args, viz, device, ten_crop, gt)
-            auc2 = test(test_loader_only_anomaly, model, args, viz, device, ten_crop, gt_only_anomaly, only_abnormal=True)
+            auc = test(datasetInfos, videos_pkl_test, test_loader, model, args, viz, device, ten_crop)
+            auc2 = test(datasetInfos, videos_pkl_test, test_loader_only_anomaly, model, args, viz, device, ten_crop, only_abnormal=True)
 
             state = {
               'epoch': epoch,

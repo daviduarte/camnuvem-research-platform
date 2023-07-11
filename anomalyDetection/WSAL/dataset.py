@@ -11,8 +11,9 @@ from sklearn.preprocessing import normalize
 from random import randint
 
 class dataset_h5(torch.utils.data.Dataset):
-    def __init__(self, videos_pkl, in_file, ten_crop):
+    def __init__(self, samplesQtd,  videos_pkl, in_file, ten_crop):
         super(dataset_h5, self).__init__()
+        self.samplesQtd = samplesQtd
         f2 = open(videos_pkl,"r")
         videos = f2.readlines()
         self.ten_crop = ten_crop
@@ -67,8 +68,8 @@ class dataset_h5(torch.utils.data.Dataset):
         """
 
     def __getitem__(self, index):
-        normalAnomalyDivision = 810    # UCF
-        #normalAnomalyDivision = 433     # CamNuvem
+        normalAnomalyDivision = self.samplesQtd[1] # 810 for UCF and 437 for camnuvem. Put the configs for your only dataset on datasetConfig.py
+
         nvid = self.__nvid__[index]
         #print(nvid)
         ind = (index+randint(0, normalAnomalyDivision-1))%normalAnomalyDivision
@@ -169,8 +170,9 @@ class dataset_h5(torch.utils.data.Dataset):
         return min(len(self.__avid__),len(self.__nvid__))
 
 class dataset_h5_test(torch.utils.data.Dataset):
-    def __init__(self, videos_pkl, in_file, ten_crop, only_anomaly = False):
+    def __init__(self, samplesQtd, videos_pkl, in_file, ten_crop, only_anomaly = False):
         super(dataset_h5_test, self).__init__()
+        self.samplesQtd = samplesQtd
         f2 = open(videos_pkl,"r")
         videos = f2.readlines()
         self.only_anomaly = only_anomaly
@@ -178,9 +180,7 @@ class dataset_h5_test(torch.utils.data.Dataset):
         self.__vid__=[]
 
         if self.only_anomaly == True:
-            #videos = videos[0:49]       # CamNuvem
-            videos = videos[0:140]  # UCF
-        print(len(videos))
+            videos = videos[0:self.samplesQtd[0]]       # 140 for UCF and 49 for camnuvem. Put the configs for your only dataset on datasetConfig.py
 
 
         for v in videos:
@@ -208,8 +208,7 @@ class dataset_h5_test(torch.utils.data.Dataset):
         feas = []
         preds = []
         from sklearn.preprocessing import Normalizer
-        print(vid)
-        print(self.file)
+
         tmp = self.file[vid]
         #tmp = tmp[:,:, 0:1024]   
         #tmp = tmp[0:32,0, 0:1024]  

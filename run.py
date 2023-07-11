@@ -17,9 +17,10 @@ sys.path.append(os.path.join(ROOT_DIR, "extractI3d/pytorch-resnet3d"))
 sys.path.append(os.path.join(ROOT_DIR, "anomalyDetection"))
 import extractI3d
 from anomalyDetection.WSAL import create_hd5
+from datasetConfig import selectDataset
 
 from RTFM import main as RTFM_Train
-from RTFM.list import make_list_camnuvem, make_gt_camnuvem_dataset
+from RTFM.list import make_list_camnuvem
 from WSAL import Train as WSAL_Train
 
 #meu_main = importlib.import_module("extractI3d.pytorch-resnet3d.meu_main")
@@ -34,11 +35,14 @@ def sanityCheck(args):
 
 if __name__ == '__main__':
 
-	anomalyDetectionMethod = "RTFM"
-	#anomalyDetectionMethod = "WSAL"
-
 	args = option.parser.parse_args()
 	sanityCheck(args)
+
+	anomalyDetectionMethod = args.anomaly_detection_method
+	dataset = args.dataset
+	datasetInfos = selectDataset(dataset)
+	print("You are using "+anomalyDetectionMethod+" as video surveillance anomaly detection method. ")
+	print("You are using "+dataset+" dataset. It uses " + str(datasetInfos[0]) + " anomaly samples for testing and " + str(datasetInfos[1]) + " anomaly samples for training.")
 
 	if args.root == "False":
 		print("Root argument mandatory")
@@ -123,17 +127,14 @@ if __name__ == '__main__':
 			exit()
 
 		if crop_10:
-			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-test-10crop.list")
-			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-train-10crop.list")
-			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-test-abnormal-only-10crop.list")
+			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test-10crop.list")
+			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-train-10crop.list")
+			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test-abnormal-only-10crop.list")
 		else:
-			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-test.list")
-			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-train.list")					
-			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/ucf-crime-"+args.feature_extractor+"-test-abnormal-only.list")			
+			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test.list")
+			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-train.list")					
+			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test-abnormal-only.list")			
 
-
-		gt_output = os.path.join(root, "pesquisa/anomalyDetection/files/gt-ucf.npy")
-		gt_output_anomaly_only = os.path.join(root, "pesquisa/anomalyDetection/files/gt-ucf-anomaly-only.npy")
 
 		# Verify is we have to create the list file. This is mandatory either by RTFM than WSAL
 		if args.make_list_file == "True":
@@ -155,23 +156,6 @@ if __name__ == '__main__':
 
 
 			make_list_camnuvem.make_list_file(test_list_file_final_name, training_list_file_final_name, teste_only_abnormal_file_final_name, i3d_root_train_abnormal, i3d_root_train_normal, i3d_root_test_abnormal, i3d_root_test_normal)
-		
-		if args.make_gt == "True":
-			test_labels = args.test_labels
-			video_root_test_abnormal = args.video_root_test_abnormal
-			video_root_test_normal = args.video_root_test_normal
-			
-
-			if test_labels == "False" or video_root_test_normal == "False" or video_root_test_abnormal == "False" or gt_output=="False":
-				print("args.test_labels is mandatory when args.make_gt is True")
-				print("args.video_root_test_abnormal is Mandatory when args.make_gt is True")
-				print("args.video_root_test_noral is mandatory when args.make_gt is True")
-				print("args.gt is mandatory when args.make_gt is True")
-				exit()
-
-			make_gt_camnuvem_dataset.start(num_frames_in_each_feature_vector, test_list_file_final_name, args.test_labels, video_root_test_abnormal, video_root_test_normal, gt_output)
-			# Let's create a file only with test abnormal samples, to enable us to create a AUC chart with just the abnormal videos
-			make_gt_camnuvem_dataset.start(num_frames_in_each_feature_vector, teste_only_abnormal_file_final_name, args.test_labels, video_root_test_abnormal, video_root_test_normal, gt_output_anomaly_only)
 
 		if anomalyDetectionMethod == "RTFM":
 			
@@ -186,7 +170,8 @@ if __name__ == '__main__':
 	
 
 
-			RTFM_Train.train(args)
+			# TODO: pass all arguments in args to subrotine arguments
+			RTFM_Train.train(args, test_list_file_final_name, datasetInfos)
 
 		elif anomalyDetectionMethod == "WSAL":
 
@@ -212,11 +197,12 @@ if __name__ == '__main__':
 				print(training_list_file_final_name)
 
 				#exit()
-				create_hd5.run(root, test_list_file_final_name, training_list_file_final_name, crop_10, hd5_train, hd5_test)
+				
+				create_hd5.run(root, test_list_file_final_name, training_list_file_final_name, crop_10, hd5_train, hd5_test, datasetInfos)
 
 			print("Trainando o WSAL")
 				
-			WSAL_Train.train_wsal(training_list_file_final_name, test_list_file_final_name, hd5_train, hd5_test, gt_output, num_frames_in_each_feature_vector, root, crop_10, args.gpu_id, args.checkpoint, args.gt_only_anomaly)
+			WSAL_Train.train_wsal(training_list_file_final_name, test_list_file_final_name, hd5_train, hd5_test, num_frames_in_each_feature_vector, root, crop_10, args.gpu_id, args.checkpoint, datasetInfos)
 
 
 
