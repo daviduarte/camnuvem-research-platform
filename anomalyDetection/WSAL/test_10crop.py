@@ -279,11 +279,19 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, te
         print(pred)
         fpr, tpr, threshold = roc_curve(list(gt), pred)
         if only_abnormal:            
-            np.save('fpr_wsal_only_abnormal_camnuvem_10c.npy', fpr)
-            np.save('tpr_wsal_only_abnormal_camnuvem_10c.npy', tpr)
+            if ten_crop:
+                np.save('anomalyDetection/WSAL/fpr_wsal_only_abnormal_camnuvem_10c.npy', fpr)
+                np.save('anomalyDetection/WSAL/tpr_wsal_only_abnormal_camnuvem_10c.npy', tpr)
+            else:
+                np.save('anomalyDetection/WSAL/fpr_wsal_only_abnormal_camnuvem.npy', fpr)
+                np.save('anomalyDetection/WSAL/tpr_wsal_only_abnormal_camnuvem.npy', tpr)                
         else:
-            np.save('fpr_wsal_camnuvem_10c.npy', fpr)
-            np.save('tpr_wsal_camnuvem_10c.npy', tpr)
+            if ten_crop:
+                np.save('anomalyDetection/WSAL/fpr_wsal_camnuvem_10c.npy', fpr)
+                np.save('anomalyDetection/WSAL/tpr_wsal_camnuvem_10c.npy', tpr)
+            else:
+                np.save('anomalyDetection/WSAL/fpr_wsal_camnuvem.npy', fpr)
+                np.save('anomalyDetection/WSAL/tpr_wsal_camnuvem.npy', tpr)                
 
         rec_auc = auc(fpr, tpr)
         print('auc : ' + str(rec_auc))

@@ -237,15 +237,22 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, on
 
         pred = np.repeat(np.array(pred), args.segment_size)
 
-
         fpr, tpr, threshold = roc_curve(list(gt), pred)
 
         if only_abnormal:            
-            np.save('fpr_rtfm_only_abnormal_camnuvem.npy', fpr)
-            np.save('tpr_rtfm_only_abnormal_camnuvem.npy', tpr)
+            if args.crop_10:
+                np.save('anomalyDetection/RTFM/fpr_rtfm_only_abnormal_camnuvem_10c.npy', fpr)
+                np.save('anomalyDetection/RTFM/tpr_rtfm_only_abnormal_camnuvem_10c.npy', tpr)
+            else:
+                np.save('anomalyDetection/RTFM/fpr_rtfm_only_abnormal_camnuvem.npy', fpr)
+                np.save('anomalyDetection/RTFM/tpr_rtfm_only_abnormal_camnuvem.npy', tpr)                
         else:
-            np.save('fpr_rtfm_camnuvem.npy', fpr)
-            np.save('tpr_rtfm_camnuvem.npy', tpr)
+            if args.crop_10:
+                np.save('anomalyDetection/RTFM/fpr_rtfm_camnuvem_10c.npy', fpr)
+                np.save('anomalyDetection/RTFM/tpr_rtfm_camnuvem_10c.npy', tpr)
+            else:
+                np.save('anomalyDetection/RTFM/fpr_rtfm_camnuvem.npy', fpr)
+                np.save('anomalyDetection/RTFM/tpr_rtfm_camnuvem.npy', tpr)                
 
         rec_auc = auc(fpr, tpr)
         print('auc : ' + str(rec_auc))
