@@ -22,6 +22,7 @@ from datasetConfig import selectDataset
 from RTFM import main as RTFM_Train
 from RTFM.list import make_list_camnuvem
 from WSAL import Train as WSAL_Train
+from RADS import main as RADS_Train
 
 #meu_main = importlib.import_module("extractI3d.pytorch-resnet3d.meu_main")
 #from extractI3d.pytorch-resnet3d import meu_main
@@ -188,21 +189,13 @@ if __name__ == '__main__':
 
 
 			if args.make_hd5_file=="True":
-				# WSAL need dataset be in h5 format. 
-
-
-				print("Criando os hd5")
-				print("Criando o h5d 10 crop")
-				print(test_list_file_final_name)
-				print(training_list_file_final_name)
-
-				#exit()
-				
+				# WSAL need dataset be in h5 format. 				
 				create_hd5.run(root, test_list_file_final_name, training_list_file_final_name, crop_10, hd5_train, hd5_test, datasetInfos)
 
 			print("Trainando o WSAL")
 				
 			WSAL_Train.train_wsal(training_list_file_final_name, test_list_file_final_name, hd5_train, hd5_test, num_frames_in_each_feature_vector, root, crop_10, args.gpu_id, args.checkpoint, datasetInfos)
 
-
-
+	
+		elif anomalyDetectionMethod == "RADS":
+			RADS_Train.main(training_list_file_final_name, test_list_file_final_name, num_frames_in_each_feature_vector, root, crop_10, args.gpu_id, args.checkpoint, datasetInfos, args.feature_extractor)
