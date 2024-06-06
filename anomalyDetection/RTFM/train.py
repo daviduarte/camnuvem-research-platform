@@ -86,50 +86,17 @@ class RTFM_loss(torch.nn.Module):
 
         label = label.to(self.device)
 
-        print("score essa bost@ aqui")
-        print(score)
-        print("SD dessa bosta de cima")
-        print(torch.std(score))
-        print("label")
-        print(label)
         loss_cls = self.criterion(score, label)  # BCE loss in the score space
 
-        # Vamos rodar 10 vezesa e salvar o SD do score
-        print("contzera")
-        print(self.contzera)
-        if self.contzera == 20:
-            file = open("porrameu.txt", 'a')
-            #file.write("zeros: " + str(countZeros(score))+"\n")
-            #file.write("ones: " + str(countOnes(score))+"\n")
-            #file.write("Não zero: " + str(len(score) - (countZeros(score) + countOnes(score) ) ) + "\n\n")
-            
-
-            nao_zero = len(score) - (countZeros(score) + countOnes(score) ) 
-            file.write(str(self.alpha) + " " + str(self.margin) + " " + str(nao_zero) + "\n")
-            file.close()
-
-
-            #exit()
-
-
-        print("feat_a shape")
-        print(feat_a.shape)
-        print(torch.mean(feat_a, dim=1).shape)
-        print(torch.norm(torch.mean(feat_a, dim=1), p=2, dim=1))
-        #exit()
+     
         loss_abn = torch.abs(self.margin - torch.norm(torch.mean(feat_a, dim=1), p=2, dim=1))
 
         loss_nor = torch.norm(torch.mean(feat_n, dim=1), p=2, dim=1)
 
         loss_rtfm = torch.mean((loss_abn + loss_nor) ** 2)
-        print("loss_rtfm")
-        print(loss_rtfm)
-        print("loss_cls")
-        print(loss_cls)
+
 
         loss_total = loss_cls + self.alpha * loss_rtfm
-        print("loss_total")
-        print(loss_total)
 
         return loss_total
 
@@ -149,7 +116,6 @@ def train(nloader, aloader, model, batch_size, optimizer, viz, device, contzera)
         feat_normal_bottom, scores, scores_nor_bottom, scores_nor_abn_bag, _ = model(input)  # b*32  x 2048
 
         scores = scores.view(batch_size * 32 * 2, -1)
-        print(scores)
 
         scores = scores.squeeze()
         abn_scores = scores[batch_size * 32:]
@@ -157,83 +123,10 @@ def train(nloader, aloader, model, batch_size, optimizer, viz, device, contzera)
         nlabel = nlabel[0:batch_size]
         alabel = alabel[0:batch_size]
 
-        """
-        file = open('actual_alpha.txt', 'r')
-        actual_alpha = file.read().rstrip('\n')
-        file.close()
-        file = open('actual_margin.txt', 'r')
-        actual_margin = file.read().rstrip('\n')
-        file.close()
-        file = open('actual_smooth.txt', 'r')
-        actual_smooth = file.read().rstrip('\n')
-        file.close()   
-        file = open('actual_sparsity.txt', 'r')
-        actual_sparsity = file.read().rstrip('\n')
-        file.close()       
-
-
-        print("Actual alpha: " + actual_alpha)
-        print("Actual margin: " + actual_margin)
-        """
-        actual_alpha = 0.0001 #
-        actual_alpha = 0.001
-        actual_alpha = 0.01
-        actual_alpha = 0.1
-        actual_alpha = 0.00001
-        actual_alpha = 0.000001
-        actual_alpha = 0.0000001
-        
-        actual_margin = 100
-        actual_margin = 10 #
-        actual_margin = 1
-        actual_margin = 0.1
-        actual_margin = 1000
-        actual_margin = 10000
-        actual_margin = 100000
-
         # Original / AUC 0.591
         actual_alpha = 0.0001  
         actual_margin = 100
-        # AUC 0.735
-        #actual_alpha = 0.0001
-        #actual_margin = 10
-        # AUC 0.733
-        #actual_alpha = 0.0001
-        #actual_margin = 1
-        # auc 0.7697
-        #actual_alpha = 0.0001  
-        #actual_margin = 1000    
-        # 0.784
-        #actual_alpha = 0.0001  
-        #actual_margin = 10000           
 
-        # AUC 0.603
-        #actual_alpha = 0.001  
-        #actual_margin = 100
-        # AUC 0.670
-        #actual_alpha = 0.001  
-        #actual_margin = 10    
-        # AUC 0.667
-        #actual_alpha = 0.001  
-        #actual_margin = 10 
-        # AUC 0.509
-        #actual_alpha = 0.001  
-        #actual_margin = 1
-        # AUC 0.672
-        #actual_alpha = 0.001  
-        #actual_margin = 1000          
-        # AUC 0.735
-        #actual_alpha = 0.001  
-        #actual_margin = 10000   
-
-        # AUC 0.759
-        #actual_alpha = 0.00001  
-        #actual_margin = 10000          
-
-
-        # AUC 0.515
-        #actual_alpha = 0.0000001
-        #actual_margin = 100000
 
         sparsity_hp = 8e-3
         smooth_hp = 8e-4

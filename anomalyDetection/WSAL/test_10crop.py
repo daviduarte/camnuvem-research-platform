@@ -94,13 +94,11 @@ def getLabels(dataset_dir, labels, list_test):
         
 
         # SSHC WORKAROUND. V
-        print(filee)
         if not os.path.exists(filee):
             path = lines_i3d[i]
             filename = os.path.basename(path)  
             filee = os.path.join(test_normal_folder, filename[:-4]+'.mp4')
-            print("REntrou aki")
-            print(filee)
+
 
         list_.append(filee)
 
@@ -133,7 +131,6 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, te
     #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-ssl-boxes+fea-normalized-test.list")
     #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
     LABELS_PATH = os.path.join(dataset_dir, "videos/labels/test.txt")
-    print(videos_pkl_test)
 
     labels = getLabels(dataset_dir, LABELS_PATH, videos_pkl_test) # 2d matrix containing the frame-level frame (columns) for each video (lines)
 
@@ -151,33 +148,17 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, te
             video = labels[i]
 
             feat, pred, vid = input
-            #feat = feat[0,:, 10]
 
-            #print("feart antes da variable")
-            #print(feat.shape)            
-            #if ten_crop:
-            #    feat = np.squeeze(feat, axis=0)
-
-            #print("feat antes da variable")
-            #print(feat.shape)
             feat, pred = Variable(feat), Variable(pred)
-            #print("feat DEPOIS da variable")
-            #print(feat.shape)
+
 
             feat = feat.to(device)
             pred = pred.to(device)
-            #pred = pred.cuda(gpu_id)
-            #print(feat.shape)
-            #print(pred.shape)
-            #exit()
+
             score, fea = model(feat, device)
-            #print("Shape da predicao: ")
-            #print(score.shape)
-            #print(fea.shape)
+
             se_score = score.squeeze()  
 
-            # se_score= spatial semantic
-            # var = temporal variation
 
             # Each of the 10 crop going to be a new clip
             if ten_crop == True:
@@ -188,8 +169,7 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, te
                 fea = torch.unsqueeze(fea, 0)   # Add a diension at begining. 
 
             ano_score = torch.zeros_like(fea[0,:,0])
-            #print(fea[0,:-1].shape)
-            #print(fea[0,1:].shape)
+
             ano_cos = torch.cosine_similarity(fea[0,:-1], fea[0,1:], dim=1)
 
             ano_score[:-1] += 1-ano_cos
@@ -198,28 +178,14 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, te
             ano_score_ = ano_score.data.cpu().flatten()
             ano_score = ano_score.data.cpu().numpy().flatten()
 
-
             # After each of 10 crop receives a score, lets separate to see what segment bellong to what video
             if ten_crop == True:
                 ano_score_ = ano_score_.reshape(segments, crops)
-                #print(ano_score_.shape)
                 ano_score_ = ano_score_.view(segments, crops).mean(0)
                 ano_score = ano_score_.numpy()
-                #print(ano_score_.shape)
-                #exit()                
-
-            # Isso aqui era pra dar 31 valores
-            #print(ano_score_.shape)
-            #exit()
             
             se_score = se_score.data.cpu().numpy().flatten()
 
-            #new_pred = ano_score.copy()
-
-            #print(new_pred)
-
-            #print("Shape da predicao depois dos paranaue: ")
-            #print(ano_score_.shape)
 
             ano_score_ = ano_score_[:-1]          # Lets ignore the last segment, because it may be a incomplete segment (i.e. a segment made with less than 75 frames). 
             shape_ = ano_score_.shape[0]
@@ -232,73 +198,31 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, te
                 exit()
             pred_ = torch.cat((pred_, ano_score_))
 
-            #input = input.to(device)
-            #input = input.permute(0, 2, 1, 3)
-            #score_abnormal, score_normal, feat_select_abn, feat_select_normal, feat_abn_bottom, feat_select_normal_bottom, logits, \
-            #scores_nor_bottom, scores_nor_abn_bag, feat_magnitudes = model(inputs=input)
-            #logits = torch.squeeze(logits, 1)
-            #logits = torch.mean(logits, 0)
-            #sig = logits
-            #pred = torch.cat((pred, sig))
-
-            #print("Shape do logit: ")
-            #print(logits.shape)
-            #print("shape do input data: ")
-            #print(input.shape)
-
-            #exit()
             cont += 1
-        #print("Qtd todal de exemplos de testr: ")
-        #print(cont)
-        #exit()
 
-        #if args.dataset == 'shanghai':
-        #gt = np.load(gt_path)
-        #elif args.dataset == 'camnuvem':
-        #print("Carregando o gt da camnuvem")
-        #    gt = np.load('list/gt-camnuvem.npy')
-        #else:
-        #    gt = np.load('list/gt-ucf.npy')
-
-        print("Quantidade totaol de segmentos de 16: ")
-        print(pred_.shape)        
-
-        print("Quantidde total de frames no arquivo gt: ")
-        print(len(gt))
-
-        #print(pred_)
 
         pred = list(pred_.cpu().detach().numpy())
         pred = np.repeat(np.array(pred), args['segment_size'])
 
-
-        print("td do pred: ")
-        print(pred.shape)
-
-        print(list(gt))
-        print(pred)
         fpr, tpr, threshold = roc_curve(list(gt), pred)
         if only_abnormal:            
             if ten_crop:
-                np.save('anomalyDetection/WSAL/fpr_wsal_only_abnormal_camnuvem_10c.npy', fpr)
-                np.save('anomalyDetection/WSAL/tpr_wsal_only_abnormal_camnuvem_10c.npy', tpr)
+                np.save('anomalyDetection/WSAL/npy_files/fpr_wsal_only_abnormal_camnuvem_10c.npy', fpr)
+                np.save('anomalyDetection/WSAL/npy_files/tpr_wsal_only_abnormal_camnuvem_10c.npy', tpr)
             else:
-                np.save('anomalyDetection/WSAL/fpr_wsal_only_abnormal_camnuvem.npy', fpr)
-                np.save('anomalyDetection/WSAL/tpr_wsal_only_abnormal_camnuvem.npy', tpr)                
+                np.save('anomalyDetection/WSAL/npy_files/fpr_wsal_only_abnormal_camnuvem.npy', fpr)
+                np.save('anomalyDetection/WSAL/npy_files/tpr_wsal_only_abnormal_camnuvem.npy', tpr)                
         else:
             if ten_crop:
-                np.save('anomalyDetection/WSAL/fpr_wsal_camnuvem_10c.npy', fpr)
-                np.save('anomalyDetection/WSAL/tpr_wsal_camnuvem_10c.npy', tpr)
+                np.save('anomalyDetection/WSAL/npy_files/fpr_wsal_camnuvem_10c.npy', fpr)
+                np.save('anomalyDetection/WSAL/npy_files/tpr_wsal_camnuvem_10c.npy', tpr)
             else:
-                np.save('anomalyDetection/WSAL/fpr_wsal_camnuvem.npy', fpr)
-                np.save('anomalyDetection/WSAL/tpr_wsal_camnuvem.npy', tpr)                
+                np.save('anomalyDetection/WSAL/npy_files/fpr_wsal_camnuvem.npy', fpr)
+                np.save('anomalyDetection/WSAL/npy_files/tpr_wsal_camnuvem.npy', tpr)                
 
         rec_auc = auc(fpr, tpr)
-        print('auc : ' + str(rec_auc))
 
         best_threshold = threshold[np.argmax(tpr - fpr)]
-        print("Best threshold: ")
-        print(best_threshold)
 
         precision, recall, th = precision_recall_curve(list(gt), pred)
         pr_auc = auc(recall, precision)

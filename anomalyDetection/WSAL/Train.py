@@ -31,7 +31,6 @@ viz = Visualizer(env='WSAL i3d 10crop', use_incoming_socket=False)
 
 
 def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_test, segment_size, root, ten_crop, gpu_id, checkpoint, datasetInfos):
-    print("********************************")
     torch.cuda.empty_cache()
 
     ver ='WSAL'
@@ -114,23 +113,13 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
     best_auc = 0
     auc = test(datasetInfos, videos_pkl_test, test_loader, model, args, viz, device, ten_crop)
     auc2 = test(datasetInfos, videos_pkl_test, test_loader_only_anomaly, model, args, viz, device, ten_crop, only_abnormal=True)
-    for epoch in range(start_epoch, 75):
+    for epoch in range(start_epoch, 500):
        
         end = time.time()
         pbar = tqdm(total=len(train_loader))
         for step, data in enumerate(train_loader):
             data_time.update(time.time() - end)
             an_feats, no_feats, preds = data
-
-            #print("Dimensão do ano_feas: ")
-            #print(an_feats.shape)
-
-            #print("Dimensão do nor_feas: ")
-            #print(no_feats.shape)        
-
-            #print("Dimensão do pred: ")
-            #print(preds.shape)
-
             an_feat, no_feat, pred = Variable(an_feats), Variable(no_feats), Variable(preds)
             
             #if gpu_id != -1:
@@ -145,20 +134,11 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
                 optimizer.zero_grad()
 
             if ten_crop:
-                #pred = pred.reshape(pred.shape[0] * pred.shape[1])
                 pred = pred[:,0:10].reshape(10*batch_size)
-                #print("Novo shape do pred: ")
-                #print(pred.shape)
+
                 an_feat = np.squeeze(an_feat, axis=0)
                 no_feat = np.squeeze(no_feat, axis=0)
-                #print("Ten crop ")
-                #print(an_feat.shape)
 
-            print("\n\nan_feat: ")
-            print(an_feat.shape)
-            print(torch.max(an_feat))
-            print(torch.min(an_feat))
-            print(torch.mean(an_feat))
             ano_ss, ano_fea = model(an_feat, device)
             nor_ss, nor_fea = model(no_feat, device)
 
@@ -172,13 +152,6 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
             
             ano_max = torch.max(dynamic_score_ano,1)[0].to(device)
             nor_max = torch.max(dynamic_score_nor,1)[0].to(device)
-
-            #print("Shape das predicoes: ")
-            #print(ano_max.shape)
-            #print(nor_max.shape)
-            #print("Shape dos labels: ")
-            #print(pred.shape)
-            #print(pred)
 
             # pred[:,0] is all anormal labels from batch
 

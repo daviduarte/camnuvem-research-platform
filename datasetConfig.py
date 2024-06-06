@@ -4,6 +4,8 @@
 def selectDataset(dataset):
     if dataset == 'camnuvem':
         return [49, 437, "CamNuvem_dataset_normalizado"]	# Camnuvem, 49 anomaly samples in test, 437 anomaly samples in training. Third param is the folder name in dataset/
+    elif dataset == 'camnuvem-normalizado-frames':
+        return [49, 437, "CamNuvem_dataset_normalizado_balanceado_frames"]	# Camnuvem, 49 anomaly samples in test, 437 anomaly samples in training. Third param is the folder name in dataset/
     elif dataset == 'ucf-crime':
         return [140, 810, "ucf_crime_dataset"]	# UCF crime, 140 anomaly samples in test, 810 anomaly samples in trainign
     else:

@@ -100,9 +100,6 @@ class Dataset(data.Dataset):
         
         features = np.array(features, dtype=np.float32)
 
-        
-
-        #print(features.shape)
         if self.args.crop_10 == "False":
 
             # Add a dummy dimension to simulate the 10 crop
@@ -115,11 +112,8 @@ class Dataset(data.Dataset):
             return features
         else:
             # process 10-cropped snippet feature
-            #print(features.shape)
             features = features.transpose(1, 0, 2)  # [10, B, T, F]
             divided_features = []
-            #print("Shape antes do looping: ")
-            #print(features.shape)
             for feature in features:
                 feature = process_feat(feature, 32)  # divide a video into 32 segments
                 divided_features.append(feature)

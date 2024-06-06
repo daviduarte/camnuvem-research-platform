@@ -19,6 +19,7 @@ def getLabels(dataset_dir, labels, list_test):
     #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
     i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
 
+
     with open(labels) as file:
         lines = file.readlines()
     qtd_anomaly_files = len(lines)
@@ -90,13 +91,10 @@ def getLabels(dataset_dir, labels, list_test):
         
 
         # SSHC WORKAROUND. V
-        print(filee)
         if not os.path.exists(filee):
             path = lines_i3d[i]
             filename = os.path.basename(path)  
             filee = os.path.join(test_normal_folder, filename[:-4]+'.mp4')
-            print("REntrou aki")
-            print(filee)
 
         list_.append(filee)
 
@@ -126,13 +124,13 @@ def getLabels(dataset_dir, labels, list_test):
 def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, only_abnormal = False):
     ROOT_DIR = args.root
     dataset_dir = os.path.join(ROOT_DIR, "dataset", datasetInfos[2])
+    print("Dataset dir: "+str(dataset_dir))
 
     #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/camnuvem-i3d-normalized-test.list")
     #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
     
     LABELS_PATH = os.path.join(dataset_dir, "videos/labels/test.txt")
     labels = getLabels(dataset_dir, LABELS_PATH, videos_pkl_test) # 2d matrix containing the frame-level frame (columns) for each video (lines)
-    print(len(labels))
     
     
     #truncated_frame_qtd = int((200) * 75)    # The video has max this num of frame
@@ -155,7 +153,6 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, on
         cont2 = 0
         #len_video = 0
 
-        print(args)
         segment_size = args.segment_size
         truncated_frame_qtd = 200 * segment_size
         for i, input in enumerate(dataloader):
@@ -174,64 +171,34 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, on
 
             model = model.to(device)
 
-            #print("Valorr do input antes da rede")
-            #print(input.shape)
-            #print(input.type())
-
-
             score_abnormal, score_normal, feat_select_abn, feat_select_normal, feat_abn_bottom, feat_select_normal_bottom, logits, \
             scores_nor_bottom, scores_nor_abn_bag, feat_magnitudes = model(inputs=input)
             
-            #print(logits)
             #exit()
             logits = torch.squeeze(logits, 1)
             logits = torch.mean(logits, 0)
 
+
             sig = logits
             sig = sig.cpu().detach()
-            print(video[0])
+
             sig = sig[:-1]          # Lets ignore the last segment, because it may be a incomplete segment (i.e. a segment made with less than 75 frames). 
             shape_ = sig.shape[0]
-            print(len(video[1]))
             gt_ = video[1][0:(shape_)*16]
-            #gt_ = video[1]    
+            #gt_ = video[1]
             gt.extend(gt_)
 
-
-
-            print(sig.shape)
-            print(len(gt_))
             if sig.shape[0] * 16 != len(gt_):
                 print("Erro. A quantidade de labels tem que ser a mesma de samples")
+                print(sig.shape[0])
+                print(len(gt_))
                 exit()
             pred = torch.cat((pred, sig))
 
-            #print("Shape do logit: ")
-            #print(logits.shape)
-            #print("shape do input data: ")
-            #print(input.shape)
-
-            #exit()
             cont += 1
             torch.cuda.empty_cache()
 
             cont2 += 16
-
-        #print("Qtd todal de exemplos de testr: ")
-        #print(cont)
-        #exit()
-
-        #if args.dataset == 'shanghai':
-        #print(gt)
-        #gt = np.load(gt)
-        #elif args.dataset == 'camnuvem':
-        #print("Carregando o gt da camnuvem")
-        #    gt = np.load('list/gt-camnuvem.npy')
-        #else:
-        #    gt = np.load('list/gt-ucf.npy')
-
-        #print(pred)
-        #exit()
 
         pred = list(pred.cpu().detach().numpy())
 
@@ -240,26 +207,24 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, on
         fpr, tpr, threshold = roc_curve(list(gt), pred)
 
         if only_abnormal:            
-            if args.crop_10:
-                np.save('anomalyDetection/RTFM/fpr_rtfm_only_abnormal_camnuvem_10c.npy', fpr)
-                np.save('anomalyDetection/RTFM/tpr_rtfm_only_abnormal_camnuvem_10c.npy', tpr)
+            if args.crop_10 == "True":
+                np.save('anomalyDetection/RTFM/npy_files/fpr_rtfm_only_abnormal_camnuvem_10c.npy', fpr)
+                np.save('anomalyDetection/RTFM/npy_files/tpr_rtfm_only_abnormal_camnuvem_10c.npy', tpr)
             else:
-                np.save('anomalyDetection/RTFM/fpr_rtfm_only_abnormal_camnuvem.npy', fpr)
-                np.save('anomalyDetection/RTFM/tpr_rtfm_only_abnormal_camnuvem.npy', tpr)                
+                np.save('anomalyDetection/RTFM/npy_files/fpr_rtfm_only_abnormal_camnuvem.npy', fpr)
+                np.save('anomalyDetection/RTFM/npy_files/tpr_rtfm_only_abnormal_camnuvem.npy', tpr)                
         else:
-            if args.crop_10:
-                np.save('anomalyDetection/RTFM/fpr_rtfm_camnuvem_10c.npy', fpr)
-                np.save('anomalyDetection/RTFM/tpr_rtfm_camnuvem_10c.npy', tpr)
+
+            if args.crop_10 == "True":
+                np.save('anomalyDetection/RTFM/npy_files/fpr_rtfm_camnuvem_10c.npy', fpr)
+                np.save('anomalyDetection/RTFM/npy_files/tpr_rtfm_camnuvem_10c.npy', tpr)
             else:
-                np.save('anomalyDetection/RTFM/fpr_rtfm_camnuvem.npy', fpr)
-                np.save('anomalyDetection/RTFM/tpr_rtfm_camnuvem.npy', tpr)                
+                np.save('anomalyDetection/RTFM/npy_files/fpr_rtfm_camnuvem.npy', fpr)
+                np.save('anomalyDetection/RTFM/npy_files/tpr_rtfm_camnuvem.npy', tpr)                
 
         rec_auc = auc(fpr, tpr)
-        print('auc : ' + str(rec_auc))
 
         best_threshold = threshold[np.argmax(tpr - fpr)]
-        #print("Best threshold: ")
-        #print(best_threshold)
 
         precision, recall, th = precision_recall_curve(list(gt), pred)
         pr_auc = auc(recall, precision)

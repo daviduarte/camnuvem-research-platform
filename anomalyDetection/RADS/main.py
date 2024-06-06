@@ -53,8 +53,7 @@ def train(epoch, model, anomaly_train_loader, normal_train_loader, device, crite
         optimizer.step()
         train_loss += loss.item()
         end = time.time()
-        print("Tempo da ifnerenciA: ")
-        print(end-start)        
+
     print('loss = {}', train_loss/len(normal_train_loader))
     scheduler.step()
 
@@ -76,8 +75,6 @@ def test_abnormal(epoch, model, anomaly_test_loader, normal_test_loader, checkpo
                 bs, segments, fea_size = inputs.shape
             inputs = inputs.view(-1, inputs.size(-1)).to(torch.device('cuda'))
 
-
-        
             score = model(inputs, bs, segments)
     
             score = score.cpu().detach().numpy()
@@ -120,12 +117,11 @@ def test_abnormal(epoch, model, anomaly_test_loader, normal_test_loader, checkpo
             #gt_list3 = np.concatenate((gt_list, gt_list2), axis=0)
 
         fpr, tpr, thresholds = metrics.roc_curve(gt, predictions, pos_label=1)
-        print(fpr)
         name = ""
         if TEN_CROP:
             name = "_10c"          
-        np.save("anomalyDetection/RADS/fpr_camnuvem_sultani"+name+".npy", fpr)
-        np.save("anomalyDetection/RADS/tpr_camnuvem_sultani"+name+".npy", tpr)
+        np.save("anomalyDetection/RADS/npy_files/fpr_camnuvem_sultani"+name+".npy", fpr)
+        np.save("anomalyDetection/RADS/npy_files/tpr_camnuvem_sultani"+name+".npy", tpr)
         auc += metrics.auc(fpr, tpr)
         #print('auc = ', auc/140)
         #print(auc)
@@ -197,14 +193,14 @@ def test_abnormal_anomaly_only(epoch, model, anomaly_test_loader, checkpoint = -
         name = ""
         if TEN_CROP:
             name = "_10c"          
-        np.save("anomalyDetection/RADS/fpr_camnuvem_sultani_only_abnormal"+name+".npy", fpr)
-        np.save("anomalyDetection/RADS/tpr_camnuvem_sultani_only_abnormal"+name+".npy", tpr)        
+        np.save("anomalyDetection/RADS/npy_files/fpr_camnuvem_sultani_only_abnormal"+name+".npy", fpr)
+        np.save("anomalyDetection/RADS/npy_files/tpr_camnuvem_sultani_only_abnormal"+name+".npy", tpr)        
         auc += metrics.auc(fpr, tpr)        
         #print('auc = ', auc/140)
         #print(auc)
         auc = auc
 
-        print('auc = ', auc)
+        print('only abnormal auc = ', auc)
         return auc, fpr, tpr        
 
 def main(training_list_file_final_name, test_list_file_final_name, num_frames_in_each_feature_vector, root, crop_10, gpu_id, checkpoint, datasetInfos, feature_extractor):

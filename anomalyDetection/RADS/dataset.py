@@ -57,8 +57,9 @@ class Normal_Loader(Dataset):
             import time
             start = time.time()            
 
-            rgb_npy = np.load(os.path.join(self.path, self.data_list[idx][:-5]+'.npy'))
-
+            data_list = os.path.join(self.path, self.data_list[idx][:-5]+'.npy')
+            rgb_npy = np.load(data_list)
+            
             #flow_npy = np.load(os.path.join(self.path, self.data_list[idx][:-5]+'.npy'))
             #concat_npy = np.concatenate([rgb_npy, flow_npy], axis=1)
             #rgb_npy = torch.sigmoid(torch.from_numpy(rgb_npy)).numpy()
@@ -72,7 +73,8 @@ class Normal_Loader(Dataset):
         else:
             name, frames, gts = self.data_list[idx].split(' ')[0], int(self.data_list[idx].split(' ')[1]), int(self.data_list[idx].split(' ')[2][:-1])
             
-            rgb_npy = np.load(os.path.join(self.path, name[:-4] + '.npy'))
+            data_list = os.path.join(self.path, name[:-4] + '.npy')
+            rgb_npy = np.load(data_list)
 
             #flow_npy = np.load(os.path.join(self.path+'all_flows', name + '.npy'))
             #concat_npy = np.concatenate([rgb_npy, flow_npy], axis=1)
@@ -95,14 +97,16 @@ class Anomaly_Loader(Dataset):
         self.ten_crop = ten_crop
         if self.is_train == 1:
             data_list = os.path.join(path, 'train_anomaly.txt')
+
             with open(data_list, 'r') as f:
                 self.data_list = f.readlines()
             random.shuffle(self.data_list)
 
             if is_ucf:
                 self.data_list = self.data_list[:-10]                
-        else:
+        else:       
             data_list = os.path.join(path, 'test_anomalyv2.txt')
+            
             with open(data_list, 'r') as f:
                 self.data_list = f.readlines()
 
@@ -136,6 +140,7 @@ class Anomaly_Loader(Dataset):
             #rgb_npy = torch.nn.functional.normalize(torch.from_numpy(rgb_npy)).numpy()
             rgb_npy = adjustSegments(rgb_npy, self.ten_crop)
             #print(rgb_npy.shape)
+
             return rgb_npy, gts, frames
 
 if __name__ == '__main__':

@@ -85,20 +85,7 @@ def evaluate_result_ucf(vid2abnormality, fpath, videos):
             GT.extend(cur_gt.tolist())
             ANS.extend(cur_ans.tolist())
             continue
-            fig = plt.figure()
-            ax1 = fig.add_subplot(211)
-            ax2 = fig.add_subplot(212)
-            #print vid, tf_idf
-            ax1.plot(cur_gt, color='r')
-            ax2.plot(cur_ans, color='g')
-            plt.title(vid)
-            plt.show()
-            root = 'png'
-            plt.savefig(root+'/'+vid+'.png')
-            # print('Save: ',root +'/'+vid+'.png')
-            plt.close()
-            # pdb.set_trace()
-        # pdb.set_trace()
+
         
         if not os.path.isdir(fpath):
             os.mkdir(fpath)

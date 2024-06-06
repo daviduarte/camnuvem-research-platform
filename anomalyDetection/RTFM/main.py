@@ -89,7 +89,7 @@ def train(args, test_list_file_final_name, datasetInfos):
 
     contzera = 0
     for step in tqdm(
-            range(1, 1500 + 1),
+            range(1, 3000 + 1),
             total=args.max_epoch,
             dynamic_ncols=True
     ):
@@ -111,7 +111,7 @@ def train(args, test_list_file_final_name, datasetInfos):
 
             auc = test(datasetInfos, test_list_file_final_name, test_loader, model, args, viz, device)
             auc2 = test(datasetInfos, test_list_file_final_name, test_loader_only_anomaly, model, args, viz, device, only_abnormal=True)
-            
+
             test_info["epoch"].append(step)
             test_info["test_AUC"].append(auc)
             test_info["test_AUC_only_abnormal"].append(auc2)

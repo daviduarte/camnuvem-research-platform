@@ -132,9 +132,9 @@ if __name__ == '__main__':
 			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-train-10crop.list")
 			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test-abnormal-only-10crop.list")
 		else:
-			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test.list")
-			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-train.list")					
-			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test-abnormal-only.list")			
+			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-balanced-frames-normalized-test.list")
+			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-balanced-frames-normalized-train.list")					
+			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-balanced-frames-normalized-test-abnormal-only.list")			
 
 
 		# Verify is we have to create the list file. This is mandatory either by RTFM than WSAL

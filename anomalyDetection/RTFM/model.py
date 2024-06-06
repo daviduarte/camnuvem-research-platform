@@ -204,47 +204,22 @@ class Model(nn.Module):
 
     def forward(self, inputs):
 
-        print("Input: ")
-        print(torch.max(inputs))
-        print(torch.min(inputs))
-        
-
         k_abn = self.k_abn
         k_nor = self.k_nor
 
         out = inputs
         bs, ncrops, t, f = out.size()
 
-        #print("Shape 1")
-        #print(out.shape)
         out = out.view(-1, t, f)
-        #print("Shape 2")
-        #print(out.shape)
         out = self.Aggregate(out)
-        #print("Shape 3")
-        #print(out.shape)
         out = self.drop_out(out)
-        #print("Shape 4")
-        #print(out.shape)
         features = out
         scores = self.relu(self.fc1(features))
-        #print("Shape 5")
-        #print(scores.shape)
-        scores = self.drop_out(scores)
-        #print("Shape 6")
-        #print(scores.shape)        
-        scores = self.relu(self.fc2(scores))
-        #print("Shape 7")
-        #print(scores.shape)        
-        scores = self.drop_out(scores)
-        #print("Shape 8")
-        #print(scores.shape)        
+        scores = self.drop_out(scores)      
+        scores = self.relu(self.fc2(scores))      
+        scores = self.drop_out(scores)      
         scores = self.sigmoid(self.fc3(scores))
-        #print("Shape 9")
-        #print(scores.shape)      
 
-        #print(scores)
-        #exit(0)
 
         if self.ten_crop == "True":  
             # If we have 10 crop, let's calculate the mean between than
@@ -281,9 +256,7 @@ class Model(nn.Module):
 
         # (10*batch*2, 32)
         feat_magnitudes = torch.norm(features, p=2, dim=2)  # Calcula a norma dos vetores de características
-        #print("feat_magnitudes shape: ")
-        #print(feat_magnitudes.shape)
-        #exit()        
+      
         if self.ten_crop == "True":  
             # If we have 10 crop, let's calculate the mean between than
             feat_magnitudes = feat_magnitudes.view(bs, ncrops, -1).mean(1) # (batch*2, 10, 32) -> (batch*2, 32)
@@ -293,19 +266,11 @@ class Model(nn.Module):
             
 
         # here we have (1 batch, 118 features) de normas
-        #print("feat_magnitudes shape: ")
-        #print(feat_magnitudes.shape)    
+
         
         nfea_magnitudes = feat_magnitudes[0:self.batch_size]  # normal feature magnitudes
         afea_magnitudes = feat_magnitudes[self.batch_size:]  # abnormal feature magnitudes  # (16, 32)
         n_size = nfea_magnitudes.shape[0]
-
-        #print("nfea_magnitudes shape: ")
-        #print(nfea_magnitudes.shape)  
-        #print("afea_magnitudes shape: ")
-        #print(afea_magnitudes.shape)        
-        #print(n_size)    
-
 
         if nfea_magnitudes.shape[0] == 1:  # this is for inference, the batch size is 1
             afea_magnitudes = nfea_magnitudes
@@ -313,67 +278,43 @@ class Model(nn.Module):
             abnormal_features = normal_features
 
         select_idx = torch.ones_like(nfea_magnitudes).to(self.device)    # Preenche com 1's
-        #print("select_idx")
-        #print(select_idx)
-        select_idx = self.drop_out(select_idx)  # O dropout muda os elementos do array
 
-        #print("select_idx")
-        #print(select_idx.shape)
-        #exit()
+        select_idx = self.drop_out(select_idx)  # O dropout muda os elementos do array
 
 
         #######  process abnormal videos -> select top3 feature magnitude  #######
         afea_magnitudes_drop = afea_magnitudes * select_idx
-        #print("afea_magnitudes_drop")
-        #print(afea_magnitudes_drop) 
-        
+
         # idx_abn é o indice do vetor de característica com a maior norma
         idx_abn = torch.topk(afea_magnitudes_drop, k_abn, dim=1)[1] # Pega as k_abn maiores normas dos vetores de características
-        #print("k_abn")
-        #print(k_abn)    # (16,1)
-        #print("idx_abn")
-        #print(idx_abn.shape)    # (16,1)
-        #exit()
-                
+
 
         # Expando o vetor para conter 2048 posições, e repito o indice do vetor até encher 2048
         idx_abn_feat = idx_abn.unsqueeze(2).expand([-1, -1, abnormal_features.shape[2]])
-        #print("idx_abn_feat")
-        #print(idx_abn_feat.shape)
-        #exit()
 
 
         abnormal_features = abnormal_features.view(n_size, ncrops, t, f)
-        #print("abnormal_features")
-        #print(abnormal_features.shape)
-        #exit()
         
         abnormal_features = abnormal_features.permute(1, 0, 2,3)
-        #print("abnormal_features")
-        #print(abnormal_features.shape)
-        #print("\n\n")
+
         total_select_abn_feature = torch.zeros(0).to(self.device)
         for abnormal_feature in abnormal_features:  # itera os 10 crop
-            #print("Itertou 1 vez")
-            #print(abnormal_feature.shape)
+
             # Pega a feature do segmento idx_abn_feat
             # abnormal_feature é (16, 32, 2048)
             feat_select_abn = torch.gather(abnormal_feature, 1, idx_abn_feat).to(self.device)   # top 3 features magnitude in abnormal bag
-            #print("feat_select_abn")
-            #print(feat_select_abn.shape)
+ 
             total_select_abn_feature = torch.cat((total_select_abn_feature, feat_select_abn))   
 
         # As features com maiores normas de cada video
         #(16, 1, 2048) ou (160, 1, 204)
-        #print(total_select_abn_feature)
+
         
         # idx_abn é o indice do vetor de característica com a maior norma
         idx_abn_score = idx_abn.unsqueeze(2).expand([-1, -1, abnormal_scores.shape[2]])
-        #print(idx_abn_score)
 
         # Pego os scores dos segmentos que possuem a maior norma
         score_abnormal = torch.mean(torch.gather(abnormal_scores, 1, idx_abn_score), dim=1)  # top 3 scores in abnormal bag based on the top-3 magnitude
-        #print(score_abnormal)
         
 
         ####### process normal videos -> select top3 feature magnitude #######

@@ -48,7 +48,6 @@ def run(root, list_test, list_training, ten_crop, arquivo_train, arquivo_test, o
 			name = path.strip().split('/')[-1][:-4]
 
 			features = np.load(path)
-			#print(features.shape)
 
 			if count < offset_:
 				name = "anomaly_"+name

@@ -7,7 +7,6 @@ import torch.nn.init as torch_init
 def weight_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        print("ÔÔÔÔÔÔ BUCETAAAAAAAA")
         torch_init.xavier_uniform_(m.weight)
         if m.bias is not None:
             m.bias.data.fill_(0)
@@ -52,20 +51,14 @@ class HOE_model(nn.Module):
 
     def forward(self, input, device):
 
-        #input.to("cuda:1")
-        #print(device)
-        input = input.to(device).float()
-        print(input.type())
 
-    
-        #print(input.shape)
+        input = input.to(device).float()
+
         fea = F.relu(self.fc0(input))
         fea = F.dropout(fea, self.dropout_rate, training=self.training)
         
         # temporal
         # EQ 4
-        #print("Shape do fea")
-        #print(fea.shape)
 
         if self.ten_crop:
             batchSize, numSegments, numCrops, featuresSize = fea.shape
@@ -73,28 +66,16 @@ class HOE_model(nn.Module):
             #old_fea = old_fea.view(batchSize * numCrops, numSegments, featuresSize)
             old_fea = old_fea.reshape(batchSize * numCrops, numSegments, featuresSize)
             fea = old_fea
-            #fea = fea.permute()
-            #print(fea.shape)
-            #kkk = fea.view(batchSize*n)
-            
-            #print("Shape do fea")
-            #print(fea.shape)
-            #exit()            
-        #else:
+
         old_fea = fea.permute(0,2,1) 
 
         old_fea = torch.nn.functional.pad(old_fea, (self.k_size//2,self.k_size//2), mode='replicate')
         new_fea = self.conv(old_fea)
 
-        #if self.ten_crop:
-        #    new_fea = 
-        #else:
+
         new_fea = new_fea.permute(0,2,1)
 
-        #print("Shape d new_fea")
-        #print(new_fea.shape)
-
-        # semantic
+   
         # EQ 5
         x = F.relu(self.fc1_1(new_fea))
         x = F.dropout(x, self.dropout_rate, training=self.training)
@@ -109,9 +90,7 @@ class HOE_model(nn.Module):
         return x, new_fea
 
     def val(self, input):
-        # assert (x.shape[0] == 1)
-        # original layers
-        # import pdb;pdb.set_trace()
+
         input_new = input.unsqueeze(0)
         at_1 = self.__self_module__(input_new,1)#1,1,1,32,1
         input_view = input.view((1,1,1,32,-1))
@@ -135,8 +114,7 @@ class Self_att(nn.Module):
 
 
     def forward(self, input, in_num):
-        # assert (x.shape[0] == 1)
-        # original layers
+
         at = F.relu(self.at1(input))
         at = F.dropout(at, self.dropout_rate, training=self.training)
         at = F.dropout(self.at2(at), self.dropout_rate, training=self.training)
