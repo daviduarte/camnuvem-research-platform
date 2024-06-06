@@ -1,3 +1,4 @@
+__pycache__/
 anomalyDetection/RTFM/ckpt/
 anomalyDetection/RTFM/list/
 anomalyDetection/WSAL/weights/
@@ -14,3 +15,6 @@ anomalyDetection/graph_detector/__pycache__/
 anomalyDetection/RADS/checkpoints/
 anomalyDetection/RADS/__pycache__/
 vis/
+anomalyDetection/RTFM/npy_files/
+anomalyDetection/WSAL/npy_files/
+anomalyDetection/RADS/npy_files/
