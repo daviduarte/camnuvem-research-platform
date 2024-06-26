@@ -45,6 +45,10 @@ class Dataset(data.Dataset):
     def _parse_list(self):
 
         self.list = list(open(self.rgb_list_file))
+        print("List no dataloader: ")
+        print(self.rgb_list_file)
+        print(self.list)
+        print("\n\n")
 
         # If we want test only in anomaly videos
         if self.test_mode is True and self.only_anomaly is True:
@@ -53,8 +57,6 @@ class Dataset(data.Dataset):
             #self.list = self.list[0:49]  # The anomaly videos is 0 to 49    CAMNUVEM 
 
             return
-
-
 
         if self.test_mode is False:
             """
@@ -96,6 +98,7 @@ class Dataset(data.Dataset):
 
         label = self.get_label()  # get video level label 0/1
 
+        print("Carregando: "+self.list[index].strip('\n'))
         features = np.load(self.list[index].strip('\n'), allow_pickle=True)
         
         features = np.array(features, dtype=np.float32)

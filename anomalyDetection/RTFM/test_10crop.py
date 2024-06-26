@@ -19,7 +19,7 @@ def getLabels(dataset_dir, labels, list_test):
     #i3d_list_test = list_test.replace("camnuvem-sshc-test", "aux_sshc")
     i3d_list_test = "/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/files/aux_yolov5.list"
 
-
+    print(labels)
     with open(labels) as file:
         lines = file.readlines()
     qtd_anomaly_files = len(lines)
@@ -33,6 +33,7 @@ def getLabels(dataset_dir, labels, list_test):
         list = line.split("  ")
 
         video_name = list[0]
+
         video_path = os.path.join(test_anomaly_folder, video_name)
         
         # First we create an array with 'frame_qtd' zeros
@@ -50,7 +51,6 @@ def getLabels(dataset_dir, labels, list_test):
         assert(len(labels) % 2 == 0) # We don't want incorrect labels
         sample_qtd = int(len(labels)/2)
         
-        
         for i in range(sample_qtd):
             index = i*2
             start = round(float(labels[index]) * frame_qtd)
@@ -61,8 +61,6 @@ def getLabels(dataset_dir, labels, list_test):
         gt.append([video_name, frame_label])
 
         anomaly_qtd += 1
-
-
 
 
     #############################################################
@@ -103,6 +101,7 @@ def getLabels(dataset_dir, labels, list_test):
 
     # Lets get the normal videos
     qtd_total_frame = 0
+    
     for video_path in list_:
         video_path = video_path.strip()
 
@@ -115,7 +114,7 @@ def getLabels(dataset_dir, labels, list_test):
         qtd_total_frame += frame_qtd
 
         frame_label = np.zeros(frame_qtd)   # All frames here are normal.
-        
+        print(video_path)
         gt.append([video_path, frame_label])
         
     return gt
@@ -130,6 +129,7 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, on
     #list_ = os.path.join(ROOT_DIR, "pesquisa/anomalyDetection/files/ucf-crime-i3d-normalized-test.list")
     
     LABELS_PATH = os.path.join(dataset_dir, "videos/labels/test.txt")
+
     labels = getLabels(dataset_dir, LABELS_PATH, videos_pkl_test) # 2d matrix containing the frame-level frame (columns) for each video (lines)
     
     
@@ -178,21 +178,22 @@ def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, on
             logits = torch.squeeze(logits, 1)
             logits = torch.mean(logits, 0)
 
-
             sig = logits
             sig = sig.cpu().detach()
 
             sig = sig[:-1]          # Lets ignore the last segment, because it may be a incomplete segment (i.e. a segment made with less than 75 frames). 
             shape_ = sig.shape[0]
-            gt_ = video[1][0:(shape_)*16]
+
+            gt_ = video[1][0:(shape_*16)]
             #gt_ = video[1]
             gt.extend(gt_)
 
-            if sig.shape[0] * 16 != len(gt_):
+            if shape_ * 16 != len(gt_):
                 print("Erro. A quantidade de labels tem que ser a mesma de samples")
-                print(sig.shape[0])
+                print(shape_*16)
                 print(len(gt_))
                 exit()
+
             pred = torch.cat((pred, sig))
 
             cont += 1

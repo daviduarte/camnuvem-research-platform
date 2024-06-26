@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
 	args = option.parser.parse_args()
 	sanityCheck(args)
-
+	test_labels = args.test_labels
 	anomalyDetectionMethod = args.anomaly_detection_method
 	dataset = args.dataset
 	datasetInfos = selectDataset(dataset)
@@ -132,9 +132,9 @@ if __name__ == '__main__':
 			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-train-10crop.list")
 			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test-abnormal-only-10crop.list")
 		else:
-			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-balanced-frames-normalized-test.list")
-			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-balanced-frames-normalized-train.list")					
-			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-balanced-frames-normalized-test-abnormal-only.list")			
+			test_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test.list")
+			training_list_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-train.list")					
+			teste_only_abnormal_file_final_name = os.path.join(root, "pesquisa/anomalyDetection/files/"+dataset+"-"+args.feature_extractor+"-test-abnormal-only.list")			
 
 
 		# Verify is we have to create the list file. This is mandatory either by RTFM than WSAL
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 				exit()
 
 
-			make_list_camnuvem.make_list_file(test_list_file_final_name, training_list_file_final_name, teste_only_abnormal_file_final_name, i3d_root_train_abnormal, i3d_root_train_normal, i3d_root_test_abnormal, i3d_root_test_normal)
+			make_list_camnuvem.make_list_file(test_list_file_final_name, training_list_file_final_name, teste_only_abnormal_file_final_name, i3d_root_train_abnormal, i3d_root_train_normal, i3d_root_test_abnormal, i3d_root_test_normal, test_labels)
 
 		if anomalyDetectionMethod == "RTFM":
 			
