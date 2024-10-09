@@ -64,10 +64,16 @@ def train_wsal(videos_pkl_train, videos_pkl_test, hdf5_path_train, hdf5_path_tes
     model = HOE_model(nfeat=features, nclass=1, ten_crop = ten_crop)
     model = model.to(device)
 
-    if checkpoint != "False":    
+    if checkpoint != "False":
+
+        print("Infs")
+        print(checkpoint)
         checkpoint = torch.load(checkpoint, map_location='cuda:0')
         start_epoch = checkpoint['epoch']
+
         model.load_state_dict(checkpoint['state_dict'])
+
+        print(videos_pkl_test)
         auc1 = test(datasetInfos, videos_pkl_test, test_loader, model, args, viz, device, ten_crop)
 
         auc2 = test(datasetInfos, videos_pkl_test, test_loader_only_anomaly, model, args, viz, device, ten_crop, only_abnormal=True)

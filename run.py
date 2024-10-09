@@ -20,7 +20,7 @@ from anomalyDetection.WSAL import create_hd5
 from datasetConfig import selectDataset
 
 from RTFM import main as RTFM_Train
-from RTFM.list import make_list_camnuvem
+from RTFM import make_list_camnuvem
 from WSAL import Train as WSAL_Train
 from RADS import main as RADS_Train
 

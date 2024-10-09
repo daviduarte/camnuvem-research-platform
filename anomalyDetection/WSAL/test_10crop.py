@@ -99,11 +99,7 @@ def getLabels(dataset_dir, labels, list_test):
             filename = os.path.basename(path)  
             filee = os.path.join(test_normal_folder, filename[:-4]+'.mp4')
 
-
         list_.append(filee)
-
-    
-
 
     # Lets get the normal videos
     qtd_total_frame = 0
@@ -112,7 +108,7 @@ def getLabels(dataset_dir, labels, list_test):
 
         # First we create an array with 'frame_qtd' zeros
         # Zeros represents the 
-        
+
         cap = cv2.VideoCapture(video_path)
         frame_qtd = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
@@ -123,7 +119,6 @@ def getLabels(dataset_dir, labels, list_test):
         gt.append([video_path, frame_label])
         
     return gt
-
 
 def test(datasetInfos, videos_pkl_test, dataloader, model, args, viz, device, ten_crop, only_abnormal = False):
     ROOT_DIR = args['root']

@@ -24,6 +24,31 @@ camnuvem-normalizado-frames-i3d-normalized-test.list for dataset name camnuvem-n
 
 # Examples of execution
 
+python3.6 run.py \
+--no-feature-extraction=True \
+--make-list-file=False \
+--segment-size=16 \
+--feature-root-train-abnormal=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/i3d_normalized/training/anomaly/ \
+--feature-root-train-normal=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/i3d_normalized/training/normal/ \
+--feature-root-test-abnormal=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/i3d_normalized/test/anomaly/ \
+--feature-root-test-normal=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/i3d_normalized/test/normal/ \
+--test-labels=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/videos/labels/test.txt \
+--video-root-train-normal=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/videos/samples/training/normal \
+--video-root-test-normal=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/videos/samples/test/normal \
+--video-root-train-abnormal=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/videos/samples/training/anomaly \
+--video-root-test-abnormal=/media/denis/dados/CamNuvem/dataset/CamNuvem_dataset_normalizado_balanceado_frames/videos/samples/test/anomaly \
+--root=/media/denis/dados/CamNuvem \
+--make-hd5-file=False \
+--crop-10=False \
+--feature-extractor=i3d-normalized \
+--replace=True \
+--gpu-id=cuda:0 \
+--feature-size=2048 \
+--anomaly-detection-method=WSAL \
+--dataset=camnuvem-normalizado-frames \
+--re-run-test=True \
+--checkpoint=/media/denis/dados/CamNuvem/pesquisa/anomalyDetection/WSAL/weights/WSAL/melhores/standardized/iter1/rgb_50.pth
+
 ## Extract features from videos using I3D and train RTFM method 
 python3 run.py \
 --no-feature-extraction=False \
